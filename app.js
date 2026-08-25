@@ -36,30 +36,31 @@ function srand(seed){
   return x-Math.floor(x);
 }
 
-// 6 new 3D model relics - displayed at top of list
+// 6 new 3D model relics - all restored, Southwest China sites
 var newRelics3D=[
-  {id:'BYQ-2026-00001',type:'陶瓷',lib:'巴渝青铜器专题',site:'重庆巫山',era:'金代',disease:'釉面磨损、口沿小豁',name:'磁州窑白地黑花草叶纹梅瓶',imgBefore:'img/relics/relic3d_12.jpg',imgAfter:'img/relics/relic3d_12.jpg',glbRestored:'img/3d/relic3d_12_web.glb',glbUnrestored:'',uploader:'陈田野',restorer:'刘修复',status:'已修复',progress:100},
-  {id:'BYQ-2026-00002',type:'陶瓷',lib:'巴渝青铜器专题',site:'重庆忠县',era:'元代',disease:'冲线、足部修复痕',name:'卵白釉执壶',imgBefore:'img/relics/relic3d_22.jpg',imgAfter:'img/relics/relic3d_22.jpg',glbRestored:'img/3d/relic3d_22_web.glb',glbUnrestored:'',uploader:'王考古',restorer:'赵匠师',status:'已修复',progress:100},
-  {id:'BYQ-2026-00003',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巴南',era:'战国',disease:'锈蚀、局部变形',name:'巴蜀兽面纹铜鍨',imgBefore:'img/relics/relic3d_32.jpg',imgAfter:'img/relics/relic3d_32.jpg',glbRestored:'img/3d/relic3d_32_web.glb',glbUnrestored:'',uploader:'李发掘',restorer:'张修复',status:'修复中',progress:75},
-  {id:'BYQ-2026-00004',type:'石质',lib:'大足石刻专题',site:'重庆大足',era:'宋代',disease:'风化、裂纹',name:'木雕牧童骑牛',imgBefore:'img/relics/relic3d_42.jpg',imgAfter:'img/relics/relic3d_42.jpg',glbRestored:'img/3d/relic3d_42_web.glb',glbUnrestored:'',uploader:'周保管',restorer:'王青铜',status:'修复中',progress:45},
-  {id:'BYQ-2026-00005',type:'金质',lib:'涪陵小田溪专题',site:'重庆涪陵',era:'汉代',disease:'沁色、边缘磨损',name:'蟠螭龙凤纹玉饰',imgBefore:'img/relics/relic3d_52.jpg',imgAfter:'img/relics/relic3d_52.jpg',glbRestored:'img/3d/relic3d_52_web.glb',glbUnrestored:'',uploader:'陈田野',restorer:'陈石质',status:'待修复',progress:0},
-  {id:'BYQ-2026-00006',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆奉节',era:'商代',disease:'锈蚀严重、腹部缺损',name:'神羊尊',imgBefore:'img/relics/relic3d_62.jpg',imgAfter:'img/relics/relic3d_62.jpg',glbRestored:'img/3d/relic3d_62_web.glb',glbUnrestored:'',uploader:'王考古',restorer:'',status:'已上传',progress:0}
+  {id:'BYQ-2026-00001',type:'陶瓷',lib:'巴渝陶瓷器专题',site:'重庆巫山',era:'金代',disease:'釉面磨损、口沿小豁',name:'代号00001',imgBefore:'img/relics/relic3d_12.jpg',imgAfter:'img/relics/relic3d_12.jpg',glbRestored:'img/3d/relic3d_12_web.glb',glbUnrestored:'',uploader:'陈涛',restorer:'张伟',status:'已修复',progress:100},
+  {id:'BYQ-2026-00002',type:'陶瓷',lib:'巴渝陶瓷器专题',site:'四川广汉',era:'元代',disease:'冲线、足部修复痕',name:'代号00002',imgBefore:'img/relics/relic3d_22.jpg',imgAfter:'img/relics/relic3d_22.jpg',glbRestored:'img/3d/relic3d_22_web.glb',glbUnrestored:'',uploader:'李强',restorer:'王勇',status:'已修复',progress:100},
+  {id:'BYQ-2026-00003',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巴南',era:'战国',disease:'锈蚀、局部变形',name:'代号00003',imgBefore:'img/relics/relic3d_32.jpg',imgAfter:'img/relics/relic3d_32.jpg',glbRestored:'img/3d/relic3d_32_web.glb',glbUnrestored:'',uploader:'刘杰',restorer:'陈涛',status:'已修复',progress:100},
+  {id:'BYQ-2026-00004',type:'石质',lib:'大足石刻专题',site:'重庆大足',era:'宋代',disease:'风化、裂纹',name:'代号00004',imgBefore:'img/relics/relic3d_42.jpg',imgAfter:'img/relics/relic3d_42.jpg',glbRestored:'img/3d/relic3d_42_web.glb',glbUnrestored:'',uploader:'杨磊',restorer:'黄斌',status:'已修复',progress:100},
+  {id:'BYQ-2026-00005',type:'金质',lib:'涪陵小田溪专题',site:'重庆涪陵',era:'汉代',disease:'沁色、边缘磨损',name:'代号00005',imgBefore:'img/relics/relic3d_52.jpg',imgAfter:'img/relics/relic3d_52.jpg',glbRestored:'img/3d/relic3d_52_web.glb',glbUnrestored:'',uploader:'周超',restorer:'吴明',status:'已修复',progress:100},
+  {id:'BYQ-2026-00006',type:'青铜器',lib:'巴渝青铜器专题',site:'四川广汉',era:'商代',disease:'锈蚀严重、腹部缺损',name:'代号00006',imgBefore:'img/relics/relic3d_62.jpg',imgAfter:'img/relics/relic3d_62.jpg',glbRestored:'img/3d/relic3d_62_web.glb',glbUnrestored:'',uploader:'徐辉',restorer:'孙鹏',status:'已修复',progress:100}
 ];
 
 function genRelics(){
-  var sites=['重庆涪陵小田溪','重庆万州甘宁乡','重庆巫山','重庆忠县','重庆云阳','重庆奉节','重庆开县','重庆江北区','重庆南川','重庆巴南','重庆大足','重庆合川','重庆永川','重庆长寿','重庆綦江','重庆铜梁','重庆潼南','重庆璧山','重庆大渡口','重庆渝北'];
+  // Southwest China sites (重庆/四川/贵州/云南/西藏)
+  var sites=['重庆涪陵小田溪','重庆万州甘宁乡','重庆巫山','重庆忠县','重庆云阳','重庆奉节','重庆开县','重庆江北区','重庆南川','重庆巴南','重庆大足','重庆合川','重庆永川','重庆长寿','重庆綦江','重庆铜梁','重庆潼南','重庆璧山','重庆大渡口','重庆渝北','四川广汉三星堆','四川成都金沙','四川绵阳','四川广元','四川南充','四川宜宾','四川泸州','四川乐山','四川自贡','四川内江','四川德阳','四川遂宁','四川达州','四川雅安','四川巴中','四川资阳','贵州贵阳','贵州遵义','贵州毕节','贵州铜仁','贵州安顺','云南昆明','云南大理','云南丽江','云南曲靖','云南玉溪','云南楚雄','云南红河','西藏拉萨','西藏日喀则','西藏山南','西藏林芝'];
   var types=['青铜器','石质','金质','陶瓷'];
   var diseases=['表面锈蚀、局部断裂','变形、缺失、锈蚀','断裂、风化','锈蚀严重','裂纹、磨损','碎裂、缺损','金箔脱落、铜锈','风化、面部缺损','焊接点开裂','边角缺损'];
-  var eras=['战国','西汉','东汉','南宋','唐代','北宋','元','明','清','民国'];
-  var uploaders=['陈田野','王考古','李发掘','周保管'];
-  var restorers=['刘修复','赵匠师','张修复','李匠师','王青铜','陈石质','刘陶瓷','赵金工','孙铭辉','周建国','吴志远','徐文斌','杨建华','黄国庆'];
-  var libNames=['巴渝青铜器专题','三峡出土文物专题','大足石刻专题','涪陵小田溪专题','万州考古专题','奉节三峡专题','巫山出土专题','忠县考古专题','云阳遗址专题','开县文物专题','南川墓葬专题','合川出土专题'];
-  var prefixes=['BYQ','SXG','DZS','FLX','WZK','FJS','WSC','ZXK','YYS','KXW','NCM','HCW'];
-  // Random library counts between 800-1200, total ~12000
-  var libCounts=[1153,847,1092,901,1176,838,1068,854,1129,933,1047,962];
+  var eras=['商代','战国','西汉','东汉','南北朝','隋','唐','北宋','南宋','元','明','清','民国'];
+  var uploaders=['张伟','李强','王勇','刘杰','陈涛','杨磊','黄斌','周超','吴明','徐辉','孙鹏','马飞','朱军','胡亮','郭建','何斌','高辉','林海','罗勇','郑刚','梁宇','谢斌','宋伟','唐勇','许磊','韩飞','冯刚','邓超','曹伟','彭勇','曾磊','肖斌','田辉','董勇','袁伟','潘飞','于军','蒋涛','蔡勇','余辉','杜斌','叶磊','程勇','苏伟','魏刚','吕军','丁勇','任辉','沈斌','姚伟','卢勇','姜磊','崔勇','钟斌','谭辉','陆伟','汪勇','范斌','金磊','石勇','廖辉','贾伟','夏勇','韦斌','方磊','白勇','邹辉','孟军','熊伟','秦勇','邱斌','江辉','尹磊','薛勇','闫伟','段斌','雷勇','侯辉','龙伟','史勇','陶斌','黎辉','贺勇','顾伟','毛斌','郝勇','龚辉','邵伟','万勇','钱斌','严辉','覃勇','武斌','戴伟','莫勇','孔斌','向辉','汤勇','田野','考古','发掘','保管','文博','志远','建国','建华','国庆','铭辉','文斌','晓东','明辉','国强','学军','建军','丽华','秀英','芳芳','小燕'];
+  var restorers=['刘修复','赵匠师','张修复','李匠师','王青铜','陈石质','刘陶瓷','赵金工','孙铭辉','周建国','吴志远','徐文斌','杨建华','黄国庆','张伟','李强','王勇','刘杰','陈涛','杨磊','黄斌','周超','吴明','徐辉','孙鹏','马飞','朱军','胡亮','郭建','何斌','高辉','林海','罗勇','郑刚','梁宇','谢斌','宋伟','唐勇','许磊','韩飞','冯刚','邓超','曹伟','彭勇','曾磊','肖斌','田辉','董勇','袁伟','潘飞','于军','蒋涛','蔡勇','余辉','杜斌','叶磊','程勇','苏伟','魏刚','吕军','丁勇','任辉','沈斌','姚伟','卢勇','姜磊','崔勇','钟斌','谭辉','陆伟','汪勇','范斌','金磊','石勇','廖辉','贾伟','夏勇','韦斌','方磊','白勇','邹辉','孟军','熊伟','秦勇','邱斌','江辉','尹磊','薛勇','闫伟','段斌','雷勇','侯辉','龙伟','史勇','陶斌','黎辉','贺勇','顾伟','毛斌','郝勇','龚辉','邵伟','万勇','钱斌','严辉','覃勇','武斌','戴伟','莫勇','孔斌','向辉','汤勇','晓东','明辉','国强','学军','建军','丽华','秀英','芳芳','小燕'];
+  // Southwest China thematic libraries
+  var libNames=['巴渝青铜器专题','巴渝陶瓷器专题','大足石刻专题','涪陵小田溪专题','万州考古专题','奉节三峡专题','巫山出土专题','忠县考古专题','三星堆青铜专题','金沙遗址专题','成都平原考古专题','贵州夜郎文化专题','云南古滇国专题','西藏吐蕃文物专题','川南崖墓专题','嘉陵江流域专题','重庆古城遗址专题','四川宋代墓葬专题','乌江流域专题','岷江流域专题'];
+  var prefixes=['BYQ','BYC','DZS','FLX','WZK','FJS','WSC','ZXK','SXH','JSY','CDP','GZY','YND','XZT','CNY','JLJ','COC','SCM','WJL','MJL'];
+  var libCounts=[1153,847,1092,901,1176,838,1068,854,1129,933,1047,962,891,778,1055,823,974,689,812,756];
   var all=[];
 
-  for(var libIdx=0;libIdx<12;libIdx++){
+  for(var libIdx=0;libIdx<libNames.length;libIdx++){
     var prefix=prefixes[libIdx];
     var libName=libNames[libIdx];
     var count=libCounts[libIdx];
@@ -143,10 +144,13 @@ function genRelics(){
   for(var k=newRelics3D.length-1;k>=0;k--){
     var nr=newRelics3D[k];
     nr.library=nr.lib;nr.size='待测量';nr.weight='待称重';
+    nr.uploadedBy=nr.uploader;
     nr.uploadTime='2026-08-25 '+(10+k)+':'+(30+k*7<10?'0'+(30+k*7):30+k*7);
-    nr.deadline=nr.status==='修复中'||nr.status==='已修复'?'2026-10-15':'';
-    nr.lastUpdate=nr.status==='修复中'?'2026-08-25 14:00':'';
-    nr.has3D=true;nr.name='代号'+nr.id.split('-')[2];
+    nr.deadline='2026-10-15';
+    nr.lastUpdate='2026-08-25 14:00';
+    nr.has3D=true;
+    nr.glbRestoredName=nr.glbRestored?nr.glbRestored.split('/').pop():'';
+    nr.glbUnrestoredName=nr.glbUnrestored?nr.glbUnrestored.split('/').pop():'';
     all.unshift(nr);
   }
   return all;
@@ -321,16 +325,16 @@ createApp({setup(){
   }
   function filterByLib(lib){fLib.value=lib.name;nav('relics');}
 
-  var showUploadModal=ref(false);var upForm=reactive({library:'',name:'',type:'青铜器',era:'',site:'',size:'',weight:'',disease:'',glbUrl:'',glbName:'',has3D:false});
+  var showUploadModal=ref(false);var upForm=reactive({library:'',name:'',type:'青铜器',era:'',site:'',size:'',weight:'',disease:'',glbUrl:'',glbName:'',has3D:false,imgUrl:'',imgName:''});
   function doUpload(){if(!upForm.library){alert('请选择专题库');return;}
     var lib=libs.value.find(function(l){return l.name===upForm.library;});
     var prefix=lib?lib.prefix:'GEN';
     var libCount=relics.value.filter(function(r){return r.library===upForm.library;}).length+1;
     var seq=String(libCount).padStart(5,'0');
     var newId=prefix+'-2026-'+seq;
-    relics.value.unshift({id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:relicImg(upForm.type,libCount),imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||'待测量',weight:upForm.weight||'待称重',uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:upForm.has3D||false,glbRestored:upForm.glbUrl||'',glbUnrestored:''});
+    relics.value.unshift({id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:upForm.imgUrl||relicImg(upForm.type,libCount),imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||'待测量',weight:upForm.weight||'待称重',uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:upForm.has3D||false,glbRestored:upForm.glbUrl||'',glbUnrestored:'',glbRestoredName:upForm.glbName||'',glbUnrestoredName:''});
     if(lib)lib.count++;
-    showUploadModal.value=false;upForm.name='';upForm.era='';upForm.site='';upForm.size='';upForm.weight='';upForm.disease='';upForm.glbUrl='';upForm.glbName='';upForm.has3D=false;
+    showUploadModal.value=false;upForm.name='';upForm.era='';upForm.site='';upForm.size='';upForm.weight='';upForm.disease='';upForm.glbUrl='';upForm.glbName='';upForm.has3D=false;upForm.imgUrl='';upForm.imgName='';
     alert('上传成功！编号：'+newId);
   }
 
@@ -472,6 +476,61 @@ createApp({setup(){
     },1800);
   }
 
+  function analyzeRelicAI(r){
+    if(!r)return;
+    r.aiAnalyzing=true;r.aiResult=null;
+    setTimeout(function(){
+      var type=r.type;var disease=r.disease||'表面锈蚀、局部断裂';
+      var pathologyDB={
+        '青铜器':{
+          factors:[{factor:'电化学腐蚀',desc:'埋藏环境中土壤酸碱度导致青铜基体氧化，产生 Cu₂O/CuO 层'},{factor:'氯离子侵蚀',desc:'土壤中可溶性盐迁移至器物内部，引发粉状锈（碱式氯化铜）'},{factor:'有害锈扩散',desc:'粉状锈不断蔓延扩展，导致器物表面酥粉化'},{factor:'机械应力损伤',desc:'出土时挤压变形导致结构脆弱，薄弱处存在断裂风险'}],
+          risks:['若不及时脱盐处理，粉状锈将在3-6个月内扩散至全器','器壁薄弱处存在断裂风险，需固定支撑','表面铭文及纹饰面临不可逆损失'],
+          suggestions:[{step:'电化学脱盐',detail:'5%碳酸钠溶液，恒电流0.5A/m²，周期7-14天'},{step:'机械除锈',detail:'手术刀+超声波微型工具，精准去除有害锈'},{step:'缓蚀处理',detail:'BTA乙醇溶液浸泡，浓度3%，时长72小时'},{step:'表面封护',detail:'Paraloid B-72 2%丙酮溶液涂刷封护'}],
+          materials:['碳酸钠（脱盐）','BTA苯并三氮唑（缓蚀）','Paraloid B-72（封护）','丙酮（溶剂）'],
+          tools:['超声波清洗机','恒电位仪','手术刀组','体视显微镜','红外热像仪'],
+          estDays:45,priority:'高'
+        },
+        '石质':{
+          factors:[{factor:'水蚀风化',desc:'雨水及地下水溶蚀碳酸盐胶结物，导致表面粉化脱落'},{factor:'生物侵蚀',desc:'苔藓、地衣分泌物产生有机酸腐蚀石材表面'},{factor:'盐结晶破坏',desc:'可溶盐反复结晶溶解导致表层剥落'},{factor:'冻融循环损伤',desc:'水分渗入裂隙后冻胀扩展，加速结构破坏'}],
+          risks:['风化层持续加深，表面雕刻细节将完全消失','裂隙扩展可能导致块体断裂脱落','盐害若不处理将导致粉化剥落不可逆'],
+          suggestions:[{step:'表面清洗',detail:'微粒子喷射技术，CaCO₃粉末，压力0.3bar'},{step:'裂隙注浆',detail:'环氧树脂+石粉调配，颜色匹配石材'},{step:'防水加固',detail:'硅酸乙酯渗透加固，浓度5%'},{step:'生物灭杀',detail:'季铵盐类生物抑制剂，涂刷3遍'}],
+          materials:['CaCO₃微粒子','环氧树脂','硅酸乙酯','季铵盐'],
+          tools:['微粒子喷射机','注浆器','红外水分仪','色差仪','裂隙测宽仪'],
+          estDays:38,priority:'高'
+        },
+        '金质':{
+          factors:[{factor:'表面氧化变色',desc:'银铜合金中铜元素优先氧化，导致表面颜色变化'},{factor:'金箔脱落',desc:'胎体与金箔结合层老化失效，金箔翘起脱落'},{factor:'机械变形',desc:'薄壁结构在出土时受压变形，存在应力集中'},{factor:'晶间腐蚀',desc:'基体金属晶间腐蚀导致微孔，影响结构强度'}],
+          risks:['金箔脱落面积将持续扩大，影响器物完整性','变形部位应力集中可能导致二次断裂','氧化层若不稳定将继续向基体深入'],
+          suggestions:[{step:'热处理整形',detail:'低温退火，150-200°C，逐步校正变形'},{step:'金箔回贴',detail:'鱼鳔胶+金箔重新贴合，需湿度控制'},{step:'表面钝化',detail:'柠檬酸溶液弱酸清洗，去除氧化层'},{step:'微束等离子焊接',detail:'修复断裂部位，氩气保护'}],
+          materials:['鱼鳔胶','柠檬酸','金箔补配材料','氩气'],
+          tools:['微束等离子焊机','恒温加热台','体视显微镜','金箔压平工具','温湿度计'],
+          estDays:25,priority:'中'
+        },
+        '陶瓷':{
+          factors:[{factor:'可溶盐结晶破坏',desc:'多孔结构内盐分反复结晶导致釉面剥落'},{factor:'碎裂缺损',desc:'出土时机械冲击导致断裂、缺失'},{factor:'釉面老化',desc:'长期埋藏导致釉层水解变得浑浊'},{factor:'修补历史残留',desc:'早期不当修补材料老化污染'}],
+          risks:['盐害持续作用下釉面将大面积剥落','断裂面若不稳定将继续扩展碎裂','早期修补材料老化可能进一步腐蚀胎体'],
+          suggestions:[{step:'脱盐处理',detail:'浸泡法+纸浆吸盐，周期2-4周，定期更换去离子水'},{step:'碎片粘接',detail:'HMG型环氧树脂+钛销钉加固'},{step:'补全做色',detail:'石膏补缺+丙烯颜料调色做旧'},{step:'釉面加固',detail:'硅酸乙酯渗透，恢复釉面光泽'}],
+          materials:['去离子水','HMG环氧树脂','石膏','丙烯颜料','钛销钉'],
+          tools:['恒温水浴锅','碎片拼接架','色差仪','UV紫外灯','牙科钻头'],
+          estDays:30,priority:'中'
+        }
+      };
+      var db=pathologyDB[type]||pathologyDB['青铜器'];
+      r.aiResult={
+        pathology:db.factors,
+        risks:db.risks,
+        suggestions:db.suggestions,
+        materials:db.materials,
+        tools:db.tools,
+        estDays:db.estDays,
+        priority:db.priority,
+        confidence:Math.floor(srand(r.id.charCodeAt(1)+5)*15)+83,
+        summary:'该文物（'+type+'类）存在'+disease+'等病害。建议优先进行无损检测（三维扫描+X射线探伤），确定内部结构损伤范围后制定修复方案。修复环境需控温（18-22°C）控湿（RH 45-55%），修复全过程需详细记录影像资料，建立修复前中后对比档案。修复完成后定期跟踪监测（每季度一次），评估修复效果稳定性。'
+      };
+      r.aiAnalyzing=false;
+    },1800);
+  }
+
   var restorerStats=computed(function(){
     var names=[...new Set(relics.value.filter(function(r){return r.restorer;}).map(function(r){return r.restorer;}))].slice(0,8);
     return names.map(function(name){
@@ -590,7 +649,7 @@ createApp({setup(){
         _viewer3D.scene=new THREE.Scene();
         _viewer3D.scene.background=new THREE.Color(0xEFF4FA);
         _viewer3D.camera=new THREE.PerspectiveCamera(45,w/h,0.1,1000);
-        _viewer3D.camera.position.set(3,2,5);
+        _viewer3D.camera.position.set(2.5,2,4.5);
         _viewer3D.renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});
         _viewer3D.renderer.setSize(w,h);
         _viewer3D.renderer.setPixelRatio(window.devicePixelRatio||1);
@@ -603,9 +662,9 @@ createApp({setup(){
         dir2.position.set(-5,3,-5);_viewer3D.scene.add(dir2);
         var grid=new THREE.GridHelper(10,20,0xCBD5E1,0xE2E8F0);
         _viewer3D.scene.add(grid);
-        var OrbitC=window.THREE_OrbitControls;
+        var OrbitC=THREE.OrbitControls||window.THREE_OrbitControls;
         if(OrbitC){_viewer3D.controls=new OrbitC(_viewer3D.camera,_viewer3D.renderer.domElement);_viewer3D.controls.enableDamping=true;_viewer3D.controls.dampingFactor=0.08;}
-        var LoaderC=window.THREE_GLTFLoader;
+        var LoaderC=THREE.GLTFLoader||window.THREE_GLTFLoader;
         if(LoaderC){
           var loader=new LoaderC();
           loader.load(glbPath,function(gltf){
@@ -616,8 +675,10 @@ createApp({setup(){
             var maxDim=Math.max(size.x,size.y,size.z)||1;
             var sc=2/maxDim;
             _viewer3D.model.scale.setScalar(sc);
+            var boxScaled=new THREE.Box3().setFromObject(_viewer3D.model);
+            var minY=boxScaled.min.y;
             _viewer3D.model.position.x=-center.x*sc;
-            _viewer3D.model.position.y=-center.y*sc+1;
+            _viewer3D.model.position.y=-minY;
             _viewer3D.model.position.z=-center.z*sc;
             _viewer3D.scene.add(_viewer3D.model);
             loading3D.value=false;
@@ -644,7 +705,34 @@ createApp({setup(){
     if(!file)return;
     if(file.size>100*1024*1024){alert('GLB文件过大（超过100MB），请先压缩');e.target.value='';return;}
     var url=URL.createObjectURL(file);
-    upForm.value.glbUrl=url;upForm.value.glbName=file.name;upForm.value.has3D=true;
+    upForm.glbUrl=url;upForm.glbName=file.name;upForm.has3D=true;
+  }
+
+  function onImgUpload(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    if(file.size>10*1024*1024){alert('图片过大（超过10MB），请压缩');e.target.value='';return;}
+    var url=URL.createObjectURL(file);
+    upForm.imgUrl=url;upForm.imgName=file.name;
+  }
+
+  function onRelicGLBUpload(e,type){
+    var file=e.target.files[0];
+    if(!file)return;
+    if(file.size>100*1024*1024){alert('GLB文件过大（超过100MB），请先压缩');e.target.value='';return;}
+    var url=URL.createObjectURL(file);
+    if(type==='restored'){
+      sel.value.glbRestored=url;
+      sel.value.glbRestoredName=file.name;
+      sel.value.has3D=true;
+      model3DMode.value='restored';
+    }else{
+      sel.value.glbUnrestored=url;
+      sel.value.glbUnrestoredName=file.name;
+      sel.value.has3D=true;
+    }
+    alert((type==='restored'?'已修复':'待修复')+'3D模型上传成功，正在加载...');
+    initViewer3D();
   }
 
   return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
@@ -659,7 +747,7 @@ createApp({setup(){
     pendingUsers,activeUsers,userSearch,filteredUsers,showUserModal,newUser,createUser,toggleStatus,
     showAuditModal,auditTarget,permList,auditForm,openAudit,approveUser,rejectUser,rejectFromAudit,
     showPermModal,permTarget,openPermModal,restorerStats,roles,onPageEntered,
-    aiSearch,aiRelic,aiAnalyzing,aiResult,aiAnalyze,
-    model3DMode,loading3D,switch3DMode,initViewer3D,onGLBUpload,
+    aiSearch,aiRelic,aiAnalyzing,aiResult,aiAnalyze,analyzeRelicAI,
+    model3DMode,loading3D,switch3DMode,initViewer3D,onGLBUpload,onRelicGLBUpload,onImgUpload,
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly};
 }}).mount('#app');

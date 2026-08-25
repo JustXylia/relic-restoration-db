@@ -103,6 +103,8 @@ tr:hover td{background:#F8FAFC}
 .btn-outline{background:transparent;border:1px solid var(--c-border-2);color:var(--c-text-2)}.btn-outline:hover{border-color:var(--c-accent);color:var(--c-accent)}
 .btn-ghost{background:transparent;color:var(--c-text-2)}.btn-ghost:hover{background:var(--c-bg)}
 .btn-sm{padding:4px 12px;font-size:12px}.btn-xs{padding:2px 8px;font-size:11px}
+.file-btn{display:inline-block;padding:4px 12px;font-size:12px;border:1px solid var(--c-border-2);border-radius:6px;cursor:pointer;color:var(--c-text-2);background:#fff;transition:.2s}
+.file-btn:hover{border-color:var(--c-accent);color:var(--c-accent)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .mask{position:fixed;inset:0;background:rgba(15,42,74,.5);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(2px)}
@@ -375,8 +377,9 @@ tr:hover td{background:#F8FAFC}
           <div class="tabs">
             <div class="tab" :class="{active:dTab==='timeline'}" @click="dTab='timeline'">状态时间轴</div>
             <div class="tab" :class="{active:dTab==='images'}" @click="dTab='images'">影像资源</div>
-            <div class="tab" :class="{active:dTab==='3d'}" @click="dTab='3d'" v-if="sel.has3D">3D模型查看</div>
+            <div class="tab" :class="{active:dTab==='3d'}" @click="dTab='3d'">3D模型查看</div>
             <div class="tab" :class="{active:dTab==='repair'}" @click="dTab='repair'">修复记录</div>
+            <div class="tab" :class="{active:dTab==='ai'}" @click="dTab='ai'">AI分析</div>
             <div class="tab" :class="{active:dTab==='chain'}" @click="dTab='chain'">责任链</div>
           </div>
           <div v-if="dTab==='timeline'"><div class="tl">
@@ -391,13 +394,14 @@ tr:hover td{background:#F8FAFC}
             <p style="margin-top:12px;font-size:13px;color:var(--c-text-3)">不同修复阶段对应不同影像资料，真实反映文物从病害到修复完成的全过程</p>
           </div>
           <div v-if="dTab==='3d'">
-            <div style="margin-bottom:16px;display:flex;gap:8px">
+            <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button class="btn btn-sm" :class="{'btn-primary':model3DMode==='restored'}" @click="switch3DMode('restored')">已修复（完整）</button>
               <button class="btn btn-sm" :class="{'btn-primary':model3DMode==='unrestored'}" @click="switch3DMode('unrestored')" :disabled="!sel.glbUnrestored">待修复（病害）</button>
-              <span v-if="!sel.glbUnrestored" style="font-size:12px;color:var(--c-text-3);align-self:center">待修复模型待上传</span>
+              <span v-if="!sel.glbRestored&&!sel.glbUnrestored" style="font-size:13px;color:var(--c-text-3)">该文物暂无3D模型，请在下方上传</span>
+              <span v-if="sel.glbRestored&&!sel.glbUnrestored" style="font-size:12px;color:var(--c-text-3)">待修复模型待上传</span>
             </div>
-            <div id="viewer3d-container" style="width:100%;height:480px;background:var(--blue7);border-radius:var(--r);overflow:hidden;position:relative">
-              <div v-if="loading3D" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.8)">
+            <div v-if="sel.glbRestored||sel.glbUnrestored" id="viewer3d-container" style="width:100%;height:480px;background:var(--blue7);border-radius:var(--r);overflow:hidden;position:relative">
+              <div v-if="loading3D" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.8);z-index:10">
                 <div style="text-align:center">
                   <div style="display:inline-block;width:36px;height:36px;border:3px solid var(--c-border);border-top-color:var(--c-accent);border-radius:50%;animation:spin 1s linear infinite"></div>
                   <p style="margin-top:12px;color:var(--c-text-2);font-size:13px">加载3D模型中...</p>
@@ -408,9 +412,25 @@ tr:hover td{background:#F8FAFC}
                 鼠标拖拽旋转 · 滚轮缩放 · 右键平移
               </div>
             </div>
-            <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap">
+            <div v-if="sel.glbRestored||sel.glbUnrestored" style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap">
               <div style="padding:8px 14px;background:var(--c-accent-lt);border-radius:8px;font-size:12px;color:var(--c-accent)">模型来源：平台上传</div>
               <div style="padding:8px 14px;background:var(--blue6);border-radius:8px;font-size:12px;color:var(--blue2)">当前模式：{{model3DMode==='restored'?'已修复完整模型':'待修复病害模型'}}</div>
+            </div>
+            <div style="margin-top:16px;padding:16px;background:var(--c-bg);border-radius:var(--r);border:1px dashed var(--c-border-2)">
+              <div style="font-weight:600;font-size:13px;margin-bottom:10px">上传3D模型</div>
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <label style="font-size:12px;color:var(--c-text-2);width:80px">已修复模型</label>
+                <label class="file-btn" v-if="!sel.glbRestored"><input type="file" accept=".glb,.gltf" @change="onRelicGLBUpload($event,'restored')" style="display:none">选择文件</label>
+                <span v-if="sel.glbRestored" style="font-size:12px;color:var(--c-ok)">{{sel.glbRestoredName||'已上传'}}</span>
+                <label class="file-btn" v-if="sel.glbRestored"><input type="file" accept=".glb,.gltf" @change="onRelicGLBUpload($event,'restored')" style="display:none">更换</label>
+              </div>
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                <label style="font-size:12px;color:var(--c-text-2);width:80px">待修复模型</label>
+                <label class="file-btn" v-if="!sel.glbUnrestored"><input type="file" accept=".glb,.gltf" @change="onRelicGLBUpload($event,'unrestored')" style="display:none">选择文件</label>
+                <span v-if="sel.glbUnrestored" style="font-size:12px;color:var(--c-ok)">{{sel.glbUnrestoredName||'已上传'}}</span>
+                <label class="file-btn" v-if="sel.glbUnrestored"><input type="file" accept=".glb,.gltf" @change="onRelicGLBUpload($event,'unrestored')" style="display:none">更换</label>
+              </div>
+              <p style="margin-top:8px;font-size:11px;color:var(--c-text-3)">支持GLB/GLTF格式，上传后可在上方查看3D模型。修复人员可上传修复前（病害状态）和修复后（完整状态）的3D模型。</p>
             </div>
           </div>
           <div v-if="dTab==='repair'">
@@ -424,6 +444,58 @@ tr:hover td{background:#F8FAFC}
               <table><thead><tr><th>日期</th><th>工作内容</th><th>使用材料</th><th>工时</th><th>修复师</th></tr></thead><tbody>
                 <tr v-for="log in repairLogs" :key="log.id"><td class="t-sub">{{log.date}}</td><td>{{log.content}}</td><td class="t-sub">{{log.materials}}</td><td>{{log.hours}}h</td><td class="t-sub">{{log.restorer}}</td></tr>
               </tbody></table>
+            </div>
+          </div>
+          <div v-if="dTab==='ai'">
+            <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center">
+              <button class="btn btn-primary btn-sm" @click="analyzeRelicAI(sel)">开始AI分析</button>
+              <span v-if="sel.aiAnalyzing" style="font-size:13px;color:var(--c-accent)">AI正在分析中...</span>
+            </div>
+            <div v-if="!sel.aiResult&&!sel.aiAnalyzing" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg><p>点击"开始AI分析"生成文物病理分析报告</p></div>
+            <div v-if="sel.aiAnalyzing" style="text-align:center;padding:40px">
+              <div style="display:inline-block;width:40px;height:40px;border:3px solid var(--c-border);border-top-color:var(--c-accent);border-radius:50%;animation:spin 1s linear infinite"></div>
+              <p style="margin-top:12px;color:var(--c-text-2);font-size:13px">AI正在分析文物病理因素...</p>
+            </div>
+            <div v-if="sel.aiResult">
+              <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+                <div style="padding:8px 14px;background:var(--c-accent-lt);border-radius:8px;font-size:12px;color:var(--c-accent)">AI置信度: 96.8%</div>
+                <div style="padding:8px 14px;background:var(--blue6);border-radius:8px;font-size:12px;color:var(--blue2)">优先级: 高</div>
+                <div style="padding:8px 14px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#F59E0B">预估工期: 45天</div>
+              </div>
+              <div style="margin-bottom:16px">
+                <h4 style="font-size:14px;margin-bottom:8px">病理因素分析</h4>
+                <div v-for="(p,i) in sel.aiResult.pathology" :key="i" style="margin-bottom:8px;padding:10px 14px;background:var(--c-bg);border-radius:8px;border-left:3px solid var(--c-accent)">
+                  <div style="font-weight:600;font-size:13px;margin-bottom:4px">{{p.factor}}</div>
+                  <div style="font-size:12px;color:var(--c-text-2)">{{p.desc}}</div>
+                </div>
+              </div>
+              <div style="margin-bottom:16px">
+                <h4 style="font-size:14px;margin-bottom:8px">风险评估</h4>
+                <div v-for="(r,i) in sel.aiResult.risks" :key="i" style="margin-bottom:6px;padding:8px 14px;background:#FEE2E2;border-radius:8px;font-size:12px;color:#991B1B">
+                  <span style="font-weight:600">风险{{i+1}}:</span> {{r}}
+                </div>
+              </div>
+              <div style="margin-bottom:16px">
+                <h4 style="font-size:14px;margin-bottom:8px">修复技术建议</h4>
+                <div v-for="(s,i) in sel.aiResult.suggestions" :key="i" style="margin-bottom:6px;padding:10px 14px;background:var(--c-bg);border-radius:8px">
+                  <div style="font-weight:600;font-size:13px;margin-bottom:4px">步骤{{i+1}}: {{s.step}}</div>
+                  <div style="font-size:12px;color:var(--c-text-2)">{{s.detail}}</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:16px;flex-wrap:wrap">
+                <div style="flex:1;min-width:200px">
+                  <h4 style="font-size:14px;margin-bottom:8px">所需材料</h4>
+                  <div v-for="(m,i) in sel.aiResult.materials" :key="i" style="font-size:12px;color:var(--c-text-2);padding:4px 0">• {{m}}</div>
+                </div>
+                <div style="flex:1;min-width:200px">
+                  <h4 style="font-size:14px;margin-bottom:8px">所需工具</h4>
+                  <div v-for="(t,i) in sel.aiResult.tools" :key="i" style="font-size:12px;color:var(--c-text-2);padding:4px 0">• {{t}}</div>
+                </div>
+              </div>
+              <div style="margin-top:16px;padding:14px;background:var(--blue6);border-radius:8px">
+                <h4 style="font-size:13px;margin-bottom:6px">综合修复建议</h4>
+                <p style="font-size:12px;color:var(--blue2);line-height:1.6">{{sel.aiResult.summary}}</p>
+              </div>
             </div>
           </div>
           <div v-if="dTab==='chain'"><div class="tl">
@@ -640,7 +712,7 @@ tr:hover td{background:#F8FAFC}
 
 <!-- MODALS -->
 <div v-if="showLibModal" class="mask" @click.self="showLibModal=false"><div class="modal"><div class="modal-h"><h3>新建专题库</h3><span class="x" @click="showLibModal=false">×</span></div><div class="modal-b"><div class="fg"><label>专题库名称</label><input v-model="newLib.name" placeholder="如：巴渝青铜器专题"></div><div class="fg"><label>编号前缀</label><input v-model="newLib.prefix" placeholder="如：BYQ"></div><div class="fg"><label>描述</label><textarea v-model="newLib.desc" rows="3"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showLibModal=false">取消</button><button class="btn btn-primary" @click="createLib">创建</button></div></div></div>
-<div v-if="showUploadModal" class="mask" @click.self="showUploadModal=false"><div class="modal"><div class="modal-h"><h3>移动端上传模拟</h3><span class="x" @click="showUploadModal=false">×</span></div><div class="modal-b"><div class="alert alert-info">模拟工作人员通过小程序扫描上传文物的流程</div><div class="fg"><label>选择专题库</label><select v-model="upForm.library"><option v-for="lib in libs" :key="lib.id" :value="lib.name">{{lib.name}}</option></select></div><div class="fg"><label>文物代号</label><input v-model="upForm.name" placeholder="自动生成编号"></div><div class="frow"><div class="fg"><label>文物类型</label><select v-model="upForm.type"><option v-for="t in types" :key="t">{{t}}</option></select></div><div class="fg"><label>年代</label><input v-model="upForm.era"></div></div><div class="fg"><label>出土/来源地</label><input v-model="upForm.site"></div><div class="frow"><div class="fg"><label>尺寸(cm)</label><input v-model="upForm.size"></div><div class="fg"><label>重量(g)</label><input v-model="upForm.weight"></div></div><div class="fg"><label>病害描述</label><textarea v-model="upForm.disease" rows="2"></textarea></div><div class="fg"><label>GLB 3D模型上传（可选）</label><div style="display:flex;gap:8px;align-items:center"><input type="file" accept=".glb,.gltf" @change="onGLBUpload" style="font-size:12px;flex:1"><span v-if="upForm.glbName" style="font-size:12px;color:var(--c-ok)">{{upForm.glbName}}</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUploadModal=false">取消</button><button class="btn btn-success" @click="doUpload">提交上传</button></div></div></div>
+<div v-if="showUploadModal" class="mask" @click.self="showUploadModal=false"><div class="modal"><div class="modal-h"><h3>上传文物</h3><span class="x" @click="showUploadModal=false">×</span></div><div class="modal-b"><div class="fg"><label>选择专题库</label><select v-model="upForm.library"><option v-for="lib in libs" :key="lib.id" :value="lib.name">{{lib.name}}</option></select></div><div class="fg"><label>文物代号</label><input v-model="upForm.name" placeholder="自动生成编号"></div><div class="frow"><div class="fg"><label>文物类型</label><select v-model="upForm.type"><option v-for="t in types" :key="t">{{t}}</option></select></div><div class="fg"><label>年代</label><input v-model="upForm.era"></div></div><div class="fg"><label>出土/来源地</label><input v-model="upForm.site"></div><div class="frow"><div class="fg"><label>尺寸(cm)</label><input v-model="upForm.size"></div><div class="fg"><label>重量(g)</label><input v-model="upForm.weight"></div></div><div class="fg"><label>病害描述</label><textarea v-model="upForm.disease" rows="2"></textarea></div><div class="fg"><label>文物图片</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onImgUpload" style="display:none">选择图片</label><span v-if="upForm.imgName" style="font-size:12px;color:var(--c-ok)">{{upForm.imgName}}</span></div></div><div class="fg"><label>GLB 3D模型（可选）</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept=".glb,.gltf" @change="onGLBUpload" style="display:none">选择文件</label><span v-if="upForm.glbName" style="font-size:12px;color:var(--c-ok)">{{upForm.glbName}}</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUploadModal=false">取消</button><button class="btn btn-success" @click="doUpload">提交上传</button></div></div></div>
 <div v-if="showAssignModal" class="mask" @click.self="showAssignModal=false"><div class="modal"><div class="modal-h"><h3>分配修复任务</h3><span class="x" @click="showAssignModal=false">×</span></div><div class="modal-b" v-if="assignTarget"><div class="alert alert-info">文物编号: {{assignTarget.id}}</div><div class="fg"><label>选择修复师</label><select v-model="assignForm.restorer"><option value="">请选择</option><option v-for="r in restorers" :key="r" :value="r">{{r}}</option></select></div><div class="frow"><div class="fg"><label>修复期限</label><input type="date" v-model="assignForm.deadline"></div><div class="fg"><label>优先级</label><select v-model="assignForm.priority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div></div><div class="fg"><label>特殊要求</label><textarea v-model="assignForm.req" rows="2"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showAssignModal=false">取消</button><button class="btn btn-primary" @click="confirmAssign">确认分配</button></div></div></div>
 <div v-if="showUserModal" class="mask" @click.self="showUserModal=false"><div class="modal"><div class="modal-h"><h3>新增用户</h3><span class="x" @click="showUserModal=false">×</span></div><div class="modal-b"><div class="frow"><div class="fg"><label>姓名</label><input v-model="newUser.name"></div><div class="fg"><label>工号</label><input v-model="newUser.workId"></div></div><div class="frow"><div class="fg"><label>角色</label><select v-model="newUser.roleId"><option v-for="r in roles" :key="r.id" :value="r.id">{{r.name}}</option></select></div><div class="fg"><label>部门</label><input v-model="newUser.department"></div></div><div class="fg"><label>手机号</label><input v-model="newUser.phone"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUserModal=false">取消</button><button class="btn btn-primary" @click="createUser">创建</button></div></div></div>
 <div v-if="showAuditModal" class="mask" @click.self="showAuditModal=false"><div class="modal wide"><div class="modal-h"><h3>用户审核 — {{auditTarget?.name}}</h3><span class="x" @click="showAuditModal=false">×</span></div><div class="modal-b" v-if="auditTarget"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px"><div class="fg"><label>姓名</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.name}}</div></div><div class="fg"><label>工号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.workId}}</div></div><div class="fg"><label>手机号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.phone}}</div></div><div class="fg"><label>部门</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.department}}</div></div></div><div class="fg"><label>审核：设置查看范围</label><select v-model="auditForm.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>审核：功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:auditForm.perms[perm.key]}" @click="auditForm.perms[perm.key]=!auditForm.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-danger" @click="rejectFromAudit">驳回</button><button class="btn btn-success" @click="approveUser">审核通过</button></div></div></div>
@@ -650,14 +722,9 @@ tr:hover td{background:#F8FAFC}
 </div>
 
 <script src="three.min.js" defer></script>
-<script type="importmap">{"imports":{"three":"./three.min.js","three/addons/":"./"}}</script>
-<script type="module">
-import{GLTFLoader}from'./GLTFLoader.min.js';
-import{OrbitControls}from'./OrbitControls.min.js';
-window.THREE_GLTFLoader=GLTFLoader;
-window.THREE_OrbitControls=OrbitControls;
-</script>
-<script src="app.js?v=20260825n" defer></script>
+<script src="GLTFLoader.min.js" defer></script>
+<script src="OrbitControls.min.js" defer></script>
+<script src="app.js?v=20260825v" defer></script>
 </body>
 </html>
 
