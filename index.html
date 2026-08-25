@@ -280,7 +280,7 @@ tr:hover td{background:#F8FAFC}
           <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>最新上传文物</span><button class="btn btn-outline btn-sm" @click="nav('relics')">查看全部</button></div>
           <table><thead><tr><th>编号</th><th></th><th>类型</th><th>出土/来源地</th><th>上传人</th><th>上传时间</th><th>状态</th><th>操作</th></tr></thead><tbody>
             <tr v-for="r in relics.slice(0,6)" :key="r.id"><td class="t-code">{{r.id}}</td>
-            <td><img loading="lazy" v-if="r.imgBefore" :src="r.imgBefore" style="width:32px;height:32px;border-radius:6px;object-fit:cover"></td>
+            <td><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" style="width:32px;height:32px;border-radius:6px;object-fit:cover"></td>
             <td>{{r.type}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{r.uploadedBy}}</td><td class="t-sub">{{r.uploadTime}}</td>
             <td><span class="badge" :class="sb(r.status)">{{r.status}}</span></td><td><button class="btn btn-outline btn-xs" @click="viewRelic(r)">查看</button></td></tr>
           </tbody></table>
@@ -332,7 +332,7 @@ tr:hover td{background:#F8FAFC}
             <tbody>
               <tr v-for="r in pagedRelics" :key="r.id">
                 <td class="t-code">{{r.id}}</td>
-                <td><img loading="lazy" v-if="r.imgBefore" :src="r.imgBefore" style="width:36px;height:36px;border-radius:6px;object-fit:cover"></td>
+                <td><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" style="width:36px;height:36px;border-radius:6px;object-fit:cover"></td>
                 <td>{{r.type}}</td><td class="t-sub">{{r.library}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{r.uploadedBy}}</td><td class="t-sub">{{r.uploadTime}}</td>
                 <td><span class="badge" :class="sb(r.status)">{{r.status}}</span></td>
                 <td><button class="btn btn-outline btn-xs" @click="viewRelic(r)">查看</button></td>
@@ -511,7 +511,7 @@ tr:hover td{background:#F8FAFC}
           <div class="alert alert-info"><span>以下文物已完成上传审核，等待分配修复人员</span></div>
           <table><thead><tr><th>编号</th><th></th><th>类型</th><th>病害描述</th><th>上传时间</th><th>操作</th></tr></thead><tbody>
             <tr v-for="r in relics.filter(x=>x.status==='已上传').slice(0,20)" :key="r.id"><td class="t-code">{{r.id}}</td>
-            <td><img loading="lazy" v-if="r.imgBefore" :src="r.imgBefore" style="width:32px;height:32px;border-radius:6px;object-fit:cover"></td>
+            <td><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" style="width:32px;height:32px;border-radius:6px;object-fit:cover"></td>
             <td>{{r.type}}</td><td class="t-sub">{{r.disease}}</td><td class="t-sub">{{r.uploadTime}}</td><td><button class="btn btn-primary btn-xs" @click="openAssign(r)">分配修复师</button></td></tr>
           </tbody></table>
           <div v-if="relics.filter(x=>x.status==='已上传').length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>暂无待分配文物</p></div>
@@ -528,7 +528,7 @@ tr:hover td{background:#F8FAFC}
           </div>
           <div class="pc-grid">
             <div v-for="r in filteredMonitor" :key="r.id" class="pc" :class="{warn:r.progress<40,no:r.progress<20}" @click="viewRelic(r)">
-              <div class="pc-top"><img loading="lazy" v-if="r.imgBefore" :src="r.imgBefore" class="pc-img"><div class="pc-info"><div class="pc-name">{{r.id}}</div></div></div>
+              <div class="pc-top"><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" class="pc-img"><div class="pc-info"><div class="pc-name">{{r.id}}</div></div></div>
               <div class="pc-restorer">修复师: {{r.restorer}} | 预计: {{r.deadline}}</div>
               <div class="pc-prog"><div class="pbar" style="flex:1"><div class="fill" :class="r.progress<20?'no':r.progress<40?'warn':'ok'" :style="{width:Math.max(r.progress,3)+'%'}"></div></div><span class="pc-pct">{{r.progress}}%</span></div>
               <div style="margin-top:6px;font-size:12px;color:var(--c-text-3)">{{stageLabel(r.progress)}} | 最后更新: {{r.lastUpdate}}</div>
@@ -724,7 +724,7 @@ tr:hover td{background:#F8FAFC}
 <script src="three.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260825v" defer></script>
+<script src="app.js?v=20260825w" defer></script>
 </body>
 </html>
 
