@@ -401,10 +401,13 @@ tr:hover td{background:#F8FAFC}
               <span v-if="sel.glbRestored&&!sel.glbUnrestored" style="font-size:12px;color:var(--c-text-3)">待修复模型待上传</span>
             </div>
             <div v-if="sel.glbRestored||sel.glbUnrestored" id="viewer3d-container" style="width:100%;height:480px;background:var(--blue7);border-radius:var(--r);overflow:hidden;position:relative">
-              <div v-if="loading3D" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.8);z-index:10">
-                <div style="text-align:center">
+              <div v-if="loading3D" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.9);z-index:10">
+                <div style="text-align:center;width:280px">
                   <div style="display:inline-block;width:36px;height:36px;border:3px solid var(--c-border);border-top-color:var(--c-accent);border-radius:50%;animation:spin 1s linear infinite"></div>
-                  <p style="margin-top:12px;color:var(--c-text-2);font-size:13px">加载3D模型中...</p>
+                  <p id="viewer3d-status" style="margin-top:12px;color:var(--c-text-2);font-size:13px">加载3D模型中...</p>
+                  <div style="margin-top:8px;width:100%;height:6px;background:var(--c-border);border-radius:3px;overflow:hidden">
+                    <div id="viewer3d-progress" style="width:0%;height:100%;background:var(--c-accent);border-radius:3px;transition:width .3s"></div>
+                  </div>
                 </div>
               </div>
               <canvas id="viewer3d-canvas" style="width:100%;height:100%"></canvas>
@@ -721,12 +724,20 @@ tr:hover td{background:#F8FAFC}
 
 </div>
 
-<div v-if="showNicknameModal" class="mask" @click.self="showNicknameModal=false"><div class="modal" style="max-width:380px"><div class="modal-h"><h3>修改昵称</h3><span class="x" @click="showNicknameModal=false">×</span></div><div class="modal-b"><div class="fg"><label>昵称</label><input type="text" v-model="nickInput" placeholder="请输入新昵称" @keyup.enter="saveNickname"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showNicknameModal=false">取消</button><button class="btn btn-primary" @click="saveNickname">保存</button></div></div></div>
+<div v-if="showNicknameModal" class="mask" @click.self="showNicknameModal=false"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>个人设置</h3><span class="x" @click="showNicknameModal=false">×</span></div><div class="modal-b">
+<div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;padding:14px;background:var(--blue7);border-radius:8px"><div class="avatar" style="width:48px;height:48px;font-size:20px">{{(currentUser.name||'?')[0]}}</div><div><div style="font-size:16px;font-weight:700">{{currentUser.name}}</div><div style="font-size:12px;color:var(--c-text-3)">{{currentUser.roleName}}</div></div></div>
+<div class="fg"><label>修改昵称</label><input type="text" v-model="nickInput" placeholder="请输入新昵称"></div>
+<div class="fg"><label>当前身份</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px;font-size:13px">{{currentUser.roleName}}</div></div>
+<div class="fg"><label>申请身份变更</label><select v-model="roleApply"><option value="">不申请</option><option value="修复师">修复师</option><option value="保管员">保管员</option><option value="研究人员">研究人员</option><option value="修复委员会主任">修复委员会主任</option></select></div>
+<div class="fg"><label>申请权限说明</label><textarea v-model="permApply" rows="2" placeholder="如需申请额外权限，请说明原因"></textarea></div>
+<div style="margin-top:8px;padding:10px 14px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E">身份变更和权限申请需经管理员审核通过后生效</div>
+</div><div class="modal-f"><button class="btn btn-outline" @click="showNicknameModal=false">取消</button><button class="btn btn-primary" @click="saveNickname">保存设置</button></div></div></div>
 
 <script src="three.min.js" defer></script>
+<script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260825x" defer></script>
+<script src="app.js?v=20260825y" defer></script>
 </body>
 </html>
 

@@ -256,12 +256,17 @@ createApp({setup(){
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
   onMounted(function(){resolveAllIdbImgs();});
-  var showNicknameModal=ref(false);var nickInput=ref('');
-  function openNicknameModal(){nickInput.value=currentUser.name||'';showNicknameModal.value=true;}
+  var showNicknameModal=ref(false);var nickInput=ref('');var roleApply=ref('');var permApply=ref('');
+  function openNicknameModal(){nickInput.value=currentUser.name||'';roleApply.value='';permApply.value='';showNicknameModal.value=true;}
   function saveNickname(){
-    if(!nickInput.value||!nickInput.value.trim()){alert('请输入昵称');return;}
-    currentUser.name=nickInput.value.trim();
-    try{localStorage.setItem('userNickname',currentUser.name);}catch(e){}
+    if(nickInput.value&&nickInput.value.trim()){currentUser.name=nickInput.value.trim();try{localStorage.setItem('userNickname',currentUser.name);}catch(e){}}
+    if(roleApply.value&&roleApply.value!==currentUser.roleName){
+      pendingUsers.value.push({id:'PR'+Date.now(),name:currentUser.name,workId:'当前用户',phone:'-',roleId:'',roleName:roleApply.value+'（身份变更申请）',regTime:new Date().toLocaleString('zh-CN'),status:'待审核',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false},applyReason:permApply.value||'申请身份变更为'+roleApply.value});
+      alert('身份变更申请已提交，请等待管理员审核');
+    }
+    if(permApply.value.trim()&&(!roleApply.value||roleApply.value===currentUser.roleName)){
+      alert('权限申请已提交，请等待管理员审核');
+    }
     showNicknameModal.value=false;
   }
   var roles=[{id:'admin',name:'系统管理员',permissions:'系统配置、用户管理、权限审核、全量数据',dataScope:'全量数据',userCount:2},{id:'director',name:'修复委员会主任',permissions:'修复审批、方案终审、验收确认',dataScope:'全量修复项目',userCount:3},{id:'restorer',name:'修复师',permissions:'修复方案编制、修复日志记录、影像上传',dataScope:'本人参与项目',userCount:40},{id:'curator',name:'保管员',permissions:'出入库操作、库房盘点、环境监测',dataScope:'所属库房',userCount:30},{id:'researcher',name:'研究人员',permissions:'文物查询、修复档案检索（只读）',dataScope:'已归档数据',userCount:25}];
@@ -779,8 +784,11 @@ createApp({setup(){
         var LoaderC=THREE.GLTFLoader||window.THREE_GLTFLoader;
         if(LoaderC){
           var loader=new LoaderC();
+          var DracoC=THREE.DRACOLoader||window.THREE_DRACOLoader;
+          if(DracoC){var draco=new DracoC();draco.setDecoderPath('draco/');loader.setDRACOLoader(draco);}
           resolveIdbUrl(glbPath).then(function(resolvedUrl){
           if(!resolvedUrl){loading3D.value=false;alert('3D模型文件未找到，可能已被清除');return;}
+          var progBar=document.getElementById('viewer3d-progress');
           loader.load(resolvedUrl,function(gltf){
             _viewer3D.model=gltf.scene;
             var box=new THREE.Box3().setFromObject(_viewer3D.model);
@@ -799,8 +807,14 @@ createApp({setup(){
             function animate(){_viewer3D.animId=requestAnimationFrame(animate);if(_viewer3D.controls)_viewer3D.controls.update();_viewer3D.renderer.render(_viewer3D.scene,_viewer3D.camera);}
             animate();
           },function(xhr){
-            if(xhr.lengthComputable){var pct=Math.round(xhr.loaded/xhr.total*100);var lp=document.querySelector('#viewer3d-container p');if(lp)lp.textContent='加载3D模型中... '+pct+'%';}
-          },function(err){console.error('GLB load error:',err);loading3D.value=false;var lp=document.querySelector('#viewer3d-container p');if(lp)lp.textContent='3D模型加载失败';});
+            if(xhr.lengthComputable){
+              var pct=Math.round(xhr.loaded/xhr.total*100);
+              var pb=document.getElementById('viewer3d-progress');
+              var sp=document.getElementById('viewer3d-status');
+              if(pb)pb.style.width=pct+'%';
+              if(sp)sp.textContent='加载3D模型中... '+pct+'%';
+            }
+          },function(err){console.error('GLB load error:',err);loading3D.value=false;var sp=document.getElementById('viewer3d-status');if(sp)sp.textContent='3D模型加载失败: '+(err.message||err);});
           });
         }else{loading3D.value=false;console.error('GLTFLoader not available');}
       }catch(e){console.error('3D init error:',e);loading3D.value=false;}
@@ -870,5 +884,5 @@ createApp({setup(){
     aiSearch,aiRelic,aiAnalyzing,aiResult,aiAnalyze,analyzeRelicAI,
     model3DMode,loading3D,switch3DMode,initViewer3D,onGLBUpload,onRelicGLBUpload,onImgUpload,
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly,
-    resolvedImgs,showNicknameModal,nickInput,openNicknameModal,saveNickname};
+    resolvedImgs,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname};
 }}).mount('#app');
