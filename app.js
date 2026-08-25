@@ -36,6 +36,16 @@ function srand(seed){
   return x-Math.floor(x);
 }
 
+// 6 new 3D model relics - displayed at top of list
+var newRelics3D=[
+  {id:'BYQ-2026-00001',type:'陶瓷',lib:'巴渝青铜器专题',site:'重庆巫山',era:'金代',disease:'釉面磨损、口沿小豁',name:'磁州窑白地黑花草叶纹梅瓶',imgBefore:'img/relics/relic3d_12.jpg',imgAfter:'img/relics/relic3d_12.jpg',glbRestored:'img/3d/relic3d_12_web.glb',glbUnrestored:'',uploader:'陈田野',restorer:'刘修复',status:'已修复',progress:100},
+  {id:'BYQ-2026-00002',type:'陶瓷',lib:'巴渝青铜器专题',site:'重庆忠县',era:'元代',disease:'冲线、足部修复痕',name:'卵白釉执壶',imgBefore:'img/relics/relic3d_22.jpg',imgAfter:'img/relics/relic3d_22.jpg',glbRestored:'img/3d/relic3d_22_web.glb',glbUnrestored:'',uploader:'王考古',restorer:'赵匠师',status:'已修复',progress:100},
+  {id:'BYQ-2026-00003',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巴南',era:'战国',disease:'锈蚀、局部变形',name:'巴蜀兽面纹铜鍨',imgBefore:'img/relics/relic3d_32.jpg',imgAfter:'img/relics/relic3d_32.jpg',glbRestored:'img/3d/relic3d_32_web.glb',glbUnrestored:'',uploader:'李发掘',restorer:'张修复',status:'修复中',progress:75},
+  {id:'BYQ-2026-00004',type:'石质',lib:'大足石刻专题',site:'重庆大足',era:'宋代',disease:'风化、裂纹',name:'木雕牧童骑牛',imgBefore:'img/relics/relic3d_42.jpg',imgAfter:'img/relics/relic3d_42.jpg',glbRestored:'img/3d/relic3d_42_web.glb',glbUnrestored:'',uploader:'周保管',restorer:'王青铜',status:'修复中',progress:45},
+  {id:'BYQ-2026-00005',type:'金质',lib:'涪陵小田溪专题',site:'重庆涪陵',era:'汉代',disease:'沁色、边缘磨损',name:'蟠螭龙凤纹玉饰',imgBefore:'img/relics/relic3d_52.jpg',imgAfter:'img/relics/relic3d_52.jpg',glbRestored:'img/3d/relic3d_52_web.glb',glbUnrestored:'',uploader:'陈田野',restorer:'陈石质',status:'待修复',progress:0},
+  {id:'BYQ-2026-00006',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆奉节',era:'商代',disease:'锈蚀严重、腹部缺损',name:'神羊尊',imgBefore:'img/relics/relic3d_62.jpg',imgAfter:'img/relics/relic3d_62.jpg',glbRestored:'img/3d/relic3d_62_web.glb',glbUnrestored:'',uploader:'王考古',restorer:'',status:'已上传',progress:0}
+];
+
 function genRelics(){
   var sites=['重庆涪陵小田溪','重庆万州甘宁乡','重庆巫山','重庆忠县','重庆云阳','重庆奉节','重庆开县','重庆江北区','重庆南川','重庆巴南','重庆大足','重庆合川','重庆永川','重庆长寿','重庆綦江','重庆铜梁','重庆潼南','重庆璧山','重庆大渡口','重庆渝北'];
   var types=['青铜器','石质','金质','陶瓷'];
@@ -128,6 +138,16 @@ function genRelics(){
   // Assign unique images to the first 50 relics
   for(var i=0;i<50&&i<all.length;i++){
     all[i].imgBefore=_allRelicImgs[i%_allRelicImgs.length];
+  }
+  // Add 3D model relics at the very beginning
+  for(var k=newRelics3D.length-1;k>=0;k--){
+    var nr=newRelics3D[k];
+    nr.library=nr.lib;nr.size='待测量';nr.weight='待称重';
+    nr.uploadTime='2026-08-25 '+(10+k)+':'+(30+k*7<10?'0'+(30+k*7):30+k*7);
+    nr.deadline=nr.status==='修复中'||nr.status==='已修复'?'2026-10-15':'';
+    nr.lastUpdate=nr.status==='修复中'?'2026-08-25 14:00':'';
+    nr.has3D=true;nr.name='代号'+nr.id.split('-')[2];
+    all.unshift(nr);
   }
   return all;
 }
@@ -301,16 +321,16 @@ createApp({setup(){
   }
   function filterByLib(lib){fLib.value=lib.name;nav('relics');}
 
-  var showUploadModal=ref(false);var upForm=reactive({library:'',name:'',type:'青铜器',era:'',site:'',size:'',weight:'',disease:''});
+  var showUploadModal=ref(false);var upForm=reactive({library:'',name:'',type:'青铜器',era:'',site:'',size:'',weight:'',disease:'',glbUrl:'',glbName:'',has3D:false});
   function doUpload(){if(!upForm.library){alert('请选择专题库');return;}
     var lib=libs.value.find(function(l){return l.name===upForm.library;});
     var prefix=lib?lib.prefix:'GEN';
     var libCount=relics.value.filter(function(r){return r.library===upForm.library;}).length+1;
     var seq=String(libCount).padStart(5,'0');
     var newId=prefix+'-2026-'+seq;
-    relics.value.unshift({id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:relicImg(upForm.type,libCount),imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||'待测量',weight:upForm.weight||'待称重',uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录'});
+    relics.value.unshift({id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:relicImg(upForm.type,libCount),imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||'待测量',weight:upForm.weight||'待称重',uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:upForm.has3D||false,glbRestored:upForm.glbUrl||'',glbUnrestored:''});
     if(lib)lib.count++;
-    showUploadModal.value=false;upForm.name='';upForm.era='';upForm.site='';upForm.size='';upForm.weight='';upForm.disease='';
+    showUploadModal.value=false;upForm.name='';upForm.era='';upForm.site='';upForm.size='';upForm.weight='';upForm.disease='';upForm.glbUrl='';upForm.glbName='';upForm.has3D=false;
     alert('上传成功！编号：'+newId);
   }
 
@@ -542,6 +562,91 @@ createApp({setup(){
     else if(v==='dashboard')initCharts();
   }
 
+  // 3D Model Viewer
+  var model3DMode=ref('restored');
+  var loading3D=ref(false);
+  var _viewer3D={scene:null,camera:null,renderer:null,controls:null,model:null,animId:null};
+
+  function initViewer3D(){
+    var s=sel.value;
+    if(!s||!s.has3D)return;
+    var glbPath=model3DMode.value==='restored'?s.glbRestored:s.glbUnrestored;
+    if(!glbPath){alert('该文物暂无'+(model3DMode.value==='restored'?'已修复':'待修复')+'3D模型');return;}
+    loading3D.value=true;
+    if(_viewer3D.animId){cancelAnimationFrame(_viewer3D.animId);_viewer3D.animId=null;}
+    var container=document.getElementById('viewer3d-container');
+    if(!container)return;
+    var oldCanvas=document.getElementById('viewer3d-canvas');
+    if(oldCanvas)oldCanvas.remove();
+    var canvas=document.createElement('canvas');
+    canvas.id='viewer3d-canvas';
+    canvas.style.cssText='width:100%;height:100%';
+    container.appendChild(canvas);
+
+    setTimeout(function(){
+      try{
+        var w=container.clientWidth||640;
+        var h=container.clientHeight||480;
+        _viewer3D.scene=new THREE.Scene();
+        _viewer3D.scene.background=new THREE.Color(0xEFF4FA);
+        _viewer3D.camera=new THREE.PerspectiveCamera(45,w/h,0.1,1000);
+        _viewer3D.camera.position.set(3,2,5);
+        _viewer3D.renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});
+        _viewer3D.renderer.setSize(w,h);
+        _viewer3D.renderer.setPixelRatio(window.devicePixelRatio||1);
+        if(THREE.SRGBColorSpace)_viewer3D.renderer.outputColorSpace=THREE.SRGBColorSpace;
+        var amb=new THREE.AmbientLight(0xffffff,0.6);
+        _viewer3D.scene.add(amb);
+        var dir1=new THREE.DirectionalLight(0xffffff,0.8);
+        dir1.position.set(5,10,5);_viewer3D.scene.add(dir1);
+        var dir2=new THREE.DirectionalLight(0xffffff,0.3);
+        dir2.position.set(-5,3,-5);_viewer3D.scene.add(dir2);
+        var grid=new THREE.GridHelper(10,20,0xCBD5E1,0xE2E8F0);
+        _viewer3D.scene.add(grid);
+        var OrbitC=window.THREE_OrbitControls;
+        if(OrbitC){_viewer3D.controls=new OrbitC(_viewer3D.camera,_viewer3D.renderer.domElement);_viewer3D.controls.enableDamping=true;_viewer3D.controls.dampingFactor=0.08;}
+        var LoaderC=window.THREE_GLTFLoader;
+        if(LoaderC){
+          var loader=new LoaderC();
+          loader.load(glbPath,function(gltf){
+            _viewer3D.model=gltf.scene;
+            var box=new THREE.Box3().setFromObject(_viewer3D.model);
+            var size=box.getSize(new THREE.Vector3());
+            var center=box.getCenter(new THREE.Vector3());
+            var maxDim=Math.max(size.x,size.y,size.z)||1;
+            var sc=2/maxDim;
+            _viewer3D.model.scale.setScalar(sc);
+            _viewer3D.model.position.x=-center.x*sc;
+            _viewer3D.model.position.y=-center.y*sc+1;
+            _viewer3D.model.position.z=-center.z*sc;
+            _viewer3D.scene.add(_viewer3D.model);
+            loading3D.value=false;
+            function animate(){_viewer3D.animId=requestAnimationFrame(animate);if(_viewer3D.controls)_viewer3D.controls.update();_viewer3D.renderer.render(_viewer3D.scene,_viewer3D.camera);}
+            animate();
+          },function(xhr){
+            if(xhr.lengthComputable){var pct=Math.round(xhr.loaded/xhr.total*100);var lp=document.querySelector('#viewer3d-container p');if(lp)lp.textContent='加载3D模型中... '+pct+'%';}
+          },function(err){console.error('GLB load error:',err);loading3D.value=false;var lp=document.querySelector('#viewer3d-container p');if(lp)lp.textContent='3D模型加载失败';});
+        }else{loading3D.value=false;console.error('GLTFLoader not available');}
+      }catch(e){console.error('3D init error:',e);loading3D.value=false;}
+    },100);
+  }
+
+  function switch3DMode(mode){
+    if(mode==='unrestored'&&!sel.value?.glbUnrestored)return;
+    model3DMode.value=mode;
+    if(dTab.value==='3d'){initViewer3D();}
+  }
+
+  watch(dTab,function(v){if(v==='3d'){model3DMode.value='restored';nextTick(function(){setTimeout(initViewer3D,200);});}});
+
+  function onGLBUpload(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    if(file.size>100*1024*1024){alert('GLB文件过大（超过100MB），请先压缩');e.target.value='';return;}
+    var url=URL.createObjectURL(file);
+    upForm.value.glbUrl=url;upForm.value.glbName=file.name;upForm.value.has3D=true;
+  }
+
   return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
     page,pageTitle,nav,types,libs,relics,allUsers,
     canManageUsers,canViewStats,canViewAI,canAssign,canEdit,canDelete,canAudit,scopedRelics,
@@ -555,5 +660,6 @@ createApp({setup(){
     showAuditModal,auditTarget,permList,auditForm,openAudit,approveUser,rejectUser,rejectFromAudit,
     showPermModal,permTarget,openPermModal,restorerStats,roles,onPageEntered,
     aiSearch,aiRelic,aiAnalyzing,aiResult,aiAnalyze,
+    model3DMode,loading3D,switch3DMode,initViewer3D,onGLBUpload,
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly};
 }}).mount('#app');

@@ -375,6 +375,7 @@ tr:hover td{background:#F8FAFC}
           <div class="tabs">
             <div class="tab" :class="{active:dTab==='timeline'}" @click="dTab='timeline'">状态时间轴</div>
             <div class="tab" :class="{active:dTab==='images'}" @click="dTab='images'">影像资源</div>
+            <div class="tab" :class="{active:dTab==='3d'}" @click="dTab='3d'" v-if="sel.has3D">3D模型查看</div>
             <div class="tab" :class="{active:dTab==='repair'}" @click="dTab='repair'">修复记录</div>
             <div class="tab" :class="{active:dTab==='chain'}" @click="dTab='chain'">责任链</div>
           </div>
@@ -388,6 +389,29 @@ tr:hover td{background:#F8FAFC}
               <div class="g-item" v-if="sel.imgBefore"><img loading="lazy" :src="sel.imgBefore" style="filter:brightness(1.05)"><div class="g-cap">修复中 · 过程记录</div></div>
             </div>
             <p style="margin-top:12px;font-size:13px;color:var(--c-text-3)">不同修复阶段对应不同影像资料，真实反映文物从病害到修复完成的全过程</p>
+          </div>
+          <div v-if="dTab==='3d'">
+            <div style="margin-bottom:16px;display:flex;gap:8px">
+              <button class="btn btn-sm" :class="{'btn-primary':model3DMode==='restored'}" @click="switch3DMode('restored')">已修复（完整）</button>
+              <button class="btn btn-sm" :class="{'btn-primary':model3DMode==='unrestored'}" @click="switch3DMode('unrestored')" :disabled="!sel.glbUnrestored">待修复（病害）</button>
+              <span v-if="!sel.glbUnrestored" style="font-size:12px;color:var(--c-text-3);align-self:center">待修复模型待上传</span>
+            </div>
+            <div id="viewer3d-container" style="width:100%;height:480px;background:var(--blue7);border-radius:var(--r);overflow:hidden;position:relative">
+              <div v-if="loading3D" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.8)">
+                <div style="text-align:center">
+                  <div style="display:inline-block;width:36px;height:36px;border:3px solid var(--c-border);border-top-color:var(--c-accent);border-radius:50%;animation:spin 1s linear infinite"></div>
+                  <p style="margin-top:12px;color:var(--c-text-2);font-size:13px">加载3D模型中...</p>
+                </div>
+              </div>
+              <canvas id="viewer3d-canvas" style="width:100%;height:100%"></canvas>
+              <div style="position:absolute;bottom:12px;left:12px;background:rgba(15,42,74,.8);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px">
+                鼠标拖拽旋转 · 滚轮缩放 · 右键平移
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap">
+              <div style="padding:8px 14px;background:var(--c-accent-lt);border-radius:8px;font-size:12px;color:var(--c-accent)">模型来源：平台上传</div>
+              <div style="padding:8px 14px;background:var(--blue6);border-radius:8px;font-size:12px;color:var(--blue2)">当前模式：{{model3DMode==='restored'?'已修复完整模型':'待修复病害模型'}}</div>
+            </div>
           </div>
           <div v-if="dTab==='repair'">
             <div v-if="!sel.restorer" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/></svg><p>该文物尚未分配修复师</p></div>
@@ -616,7 +640,7 @@ tr:hover td{background:#F8FAFC}
 
 <!-- MODALS -->
 <div v-if="showLibModal" class="mask" @click.self="showLibModal=false"><div class="modal"><div class="modal-h"><h3>新建专题库</h3><span class="x" @click="showLibModal=false">×</span></div><div class="modal-b"><div class="fg"><label>专题库名称</label><input v-model="newLib.name" placeholder="如：巴渝青铜器专题"></div><div class="fg"><label>编号前缀</label><input v-model="newLib.prefix" placeholder="如：BYQ"></div><div class="fg"><label>描述</label><textarea v-model="newLib.desc" rows="3"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showLibModal=false">取消</button><button class="btn btn-primary" @click="createLib">创建</button></div></div></div>
-<div v-if="showUploadModal" class="mask" @click.self="showUploadModal=false"><div class="modal"><div class="modal-h"><h3>移动端上传模拟</h3><span class="x" @click="showUploadModal=false">×</span></div><div class="modal-b"><div class="alert alert-info">模拟工作人员通过小程序扫描上传文物的流程</div><div class="fg"><label>选择专题库</label><select v-model="upForm.library"><option v-for="lib in libs" :key="lib.id" :value="lib.name">{{lib.name}}</option></select></div><div class="fg"><label>文物代号</label><input v-model="upForm.name" placeholder="自动生成编号"></div><div class="frow"><div class="fg"><label>文物类型</label><select v-model="upForm.type"><option v-for="t in types" :key="t">{{t}}</option></select></div><div class="fg"><label>年代</label><input v-model="upForm.era"></div></div><div class="fg"><label>出土/来源地</label><input v-model="upForm.site"></div><div class="frow"><div class="fg"><label>尺寸(cm)</label><input v-model="upForm.size"></div><div class="fg"><label>重量(g)</label><input v-model="upForm.weight"></div></div><div class="fg"><label>病害描述</label><textarea v-model="upForm.disease" rows="2"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUploadModal=false">取消</button><button class="btn btn-success" @click="doUpload">提交上传</button></div></div></div>
+<div v-if="showUploadModal" class="mask" @click.self="showUploadModal=false"><div class="modal"><div class="modal-h"><h3>移动端上传模拟</h3><span class="x" @click="showUploadModal=false">×</span></div><div class="modal-b"><div class="alert alert-info">模拟工作人员通过小程序扫描上传文物的流程</div><div class="fg"><label>选择专题库</label><select v-model="upForm.library"><option v-for="lib in libs" :key="lib.id" :value="lib.name">{{lib.name}}</option></select></div><div class="fg"><label>文物代号</label><input v-model="upForm.name" placeholder="自动生成编号"></div><div class="frow"><div class="fg"><label>文物类型</label><select v-model="upForm.type"><option v-for="t in types" :key="t">{{t}}</option></select></div><div class="fg"><label>年代</label><input v-model="upForm.era"></div></div><div class="fg"><label>出土/来源地</label><input v-model="upForm.site"></div><div class="frow"><div class="fg"><label>尺寸(cm)</label><input v-model="upForm.size"></div><div class="fg"><label>重量(g)</label><input v-model="upForm.weight"></div></div><div class="fg"><label>病害描述</label><textarea v-model="upForm.disease" rows="2"></textarea></div><div class="fg"><label>GLB 3D模型上传（可选）</label><div style="display:flex;gap:8px;align-items:center"><input type="file" accept=".glb,.gltf" @change="onGLBUpload" style="font-size:12px;flex:1"><span v-if="upForm.glbName" style="font-size:12px;color:var(--c-ok)">{{upForm.glbName}}</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUploadModal=false">取消</button><button class="btn btn-success" @click="doUpload">提交上传</button></div></div></div>
 <div v-if="showAssignModal" class="mask" @click.self="showAssignModal=false"><div class="modal"><div class="modal-h"><h3>分配修复任务</h3><span class="x" @click="showAssignModal=false">×</span></div><div class="modal-b" v-if="assignTarget"><div class="alert alert-info">文物编号: {{assignTarget.id}}</div><div class="fg"><label>选择修复师</label><select v-model="assignForm.restorer"><option value="">请选择</option><option v-for="r in restorers" :key="r" :value="r">{{r}}</option></select></div><div class="frow"><div class="fg"><label>修复期限</label><input type="date" v-model="assignForm.deadline"></div><div class="fg"><label>优先级</label><select v-model="assignForm.priority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div></div><div class="fg"><label>特殊要求</label><textarea v-model="assignForm.req" rows="2"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showAssignModal=false">取消</button><button class="btn btn-primary" @click="confirmAssign">确认分配</button></div></div></div>
 <div v-if="showUserModal" class="mask" @click.self="showUserModal=false"><div class="modal"><div class="modal-h"><h3>新增用户</h3><span class="x" @click="showUserModal=false">×</span></div><div class="modal-b"><div class="frow"><div class="fg"><label>姓名</label><input v-model="newUser.name"></div><div class="fg"><label>工号</label><input v-model="newUser.workId"></div></div><div class="frow"><div class="fg"><label>角色</label><select v-model="newUser.roleId"><option v-for="r in roles" :key="r.id" :value="r.id">{{r.name}}</option></select></div><div class="fg"><label>部门</label><input v-model="newUser.department"></div></div><div class="fg"><label>手机号</label><input v-model="newUser.phone"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUserModal=false">取消</button><button class="btn btn-primary" @click="createUser">创建</button></div></div></div>
 <div v-if="showAuditModal" class="mask" @click.self="showAuditModal=false"><div class="modal wide"><div class="modal-h"><h3>用户审核 — {{auditTarget?.name}}</h3><span class="x" @click="showAuditModal=false">×</span></div><div class="modal-b" v-if="auditTarget"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px"><div class="fg"><label>姓名</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.name}}</div></div><div class="fg"><label>工号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.workId}}</div></div><div class="fg"><label>手机号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.phone}}</div></div><div class="fg"><label>部门</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.department}}</div></div></div><div class="fg"><label>审核：设置查看范围</label><select v-model="auditForm.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>审核：功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:auditForm.perms[perm.key]}" @click="auditForm.perms[perm.key]=!auditForm.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-danger" @click="rejectFromAudit">驳回</button><button class="btn btn-success" @click="approveUser">审核通过</button></div></div></div>
@@ -625,7 +649,15 @@ tr:hover td{background:#F8FAFC}
 
 </div>
 
-<script src="app.js?v=20260825m" defer></script>
+<script src="three.min.js" defer></script>
+<script type="importmap">{"imports":{"three":"./three.min.js","three/addons/":"./"}}</script>
+<script type="module">
+import{GLTFLoader}from'./GLTFLoader.min.js';
+import{OrbitControls}from'./OrbitControls.min.js';
+window.THREE_GLTFLoader=GLTFLoader;
+window.THREE_OrbitControls=OrbitControls;
+</script>
+<script src="app.js?v=20260825n" defer></script>
 </body>
 </html>
 
