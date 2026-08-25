@@ -55,7 +55,14 @@ function updateUserRelicInStorage(relic){
   if(!relic||!relic.userUploaded)return;
   var saved=loadUserRelics();
   var idx=saved.findIndex(function(r){return r.id===relic.id;});
-  var copy={};for(var k in relic){if(typeof relic[k]!=='object'||relic[k]===null){copy[k]=relic[k];}else if(Array.isArray(relic[k])){copy[k]=relic[k].slice();}}
+  var copy={};for(var k in relic){
+    if(typeof relic[k]==='function')continue;
+    if(typeof relic[k]==='object'&&relic[k]!==null&&!Array.isArray(relic[k]))continue;
+    if(Array.isArray(relic[k])){copy[k]=relic[k].slice();}
+    else{copy[k]=relic[k];}
+  }
+  if(copy._glbRestoredIdbKey){copy.glbRestored='idb://glbFiles/'+copy._glbRestoredIdbKey;}
+  if(copy._glbUnrestoredIdbKey){copy.glbUnrestored='idb://glbFiles/'+copy._glbUnrestoredIdbKey;}
   if(idx>=0)saved[idx]=copy;else saved.unshift(copy);
   saveUserRelics(saved);
 }
@@ -249,6 +256,14 @@ createApp({setup(){
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
   onMounted(function(){resolveAllIdbImgs();});
+  var showNicknameModal=ref(false);var nickInput=ref('');
+  function openNicknameModal(){nickInput.value=currentUser.name||'';showNicknameModal.value=true;}
+  function saveNickname(){
+    if(!nickInput.value||!nickInput.value.trim()){alert('请输入昵称');return;}
+    currentUser.name=nickInput.value.trim();
+    try{localStorage.setItem('userNickname',currentUser.name);}catch(e){}
+    showNicknameModal.value=false;
+  }
   var roles=[{id:'admin',name:'系统管理员',permissions:'系统配置、用户管理、权限审核、全量数据',dataScope:'全量数据',userCount:2},{id:'director',name:'修复委员会主任',permissions:'修复审批、方案终审、验收确认',dataScope:'全量修复项目',userCount:3},{id:'restorer',name:'修复师',permissions:'修复方案编制、修复日志记录、影像上传',dataScope:'本人参与项目',userCount:40},{id:'curator',name:'保管员',permissions:'出入库操作、库房盘点、环境监测',dataScope:'所属库房',userCount:30},{id:'researcher',name:'研究人员',permissions:'文物查询、修复档案检索（只读）',dataScope:'已归档数据',userCount:25}];
   var currentUser=reactive({name:'',nickname:'',role:'',roleName:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
 
@@ -288,6 +303,7 @@ createApp({setup(){
     if(!u){loginErr.value='账号不存在，请检查工号或手机号';return;}
     if(u.status!=='正常'){loginErr.value='账号已被禁用，请联系管理员';return;}
     currentUser.name=u.name;currentUser.nickname=u.name;currentUser.role=u.roleId;currentUser.roleName=u.roleName;
+    try{var savedNick=localStorage.getItem('userNickname');if(savedNick)currentUser.name=savedNick;}catch(e){}
     currentUser.perms=rolePerms[u.roleName]||rolePerms['研究人员'];
     u.lastLogin=new Date().toLocaleString('zh-CN');
     loggedIn.value=true;
@@ -419,9 +435,11 @@ createApp({setup(){
     var newId=prefix+'-2026-'+seq;
     var hasGlb=_pendingGlbBlob?true:false;
     var hasImg=_pendingImgBlob?true:false;
-    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?'idb://imgFiles/'+newId:relicImg(upForm.type,libCount),imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?'idb://glbFiles/'+newId+'_unrestored':'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
-    if(hasGlb){idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob);}
-    if(hasImg){idbSave('imgFiles',newId,_pendingImgBlob);}
+    var glbBlobUrl=hasGlb?URL.createObjectURL(_pendingGlbBlob):'';
+    var imgBlobUrl=hasImg?URL.createObjectURL(_pendingImgBlob):'';
+    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgBlobUrl:relicImg(upForm.type,libCount),imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:glbBlobUrl,glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'','_glbUnrestoredIdbKey':hasGlb?newId+'_unrestored':'',userUploaded:true};
+    if(hasGlb){idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);});}
+    if(hasImg){idbSave('imgFiles',newId,_pendingImgBlob).catch(function(e){console.warn('Img IDB save failed:',e);});}
     relics.value.unshift(newRelic);
     var saved=loadUserRelics();saved.unshift(newRelic);saveUserRelics(saved);
     if(lib)lib.count++;
@@ -818,21 +836,23 @@ createApp({setup(){
     if(!file)return;
     if(file.size>100*1024*1024){alert('GLB文件过大（超过100MB），请先压缩');e.target.value='';return;}
     var idbKey=sel.value.id+'_'+type;
-    idbSave('glbFiles',idbKey,file).then(function(){
-      if(type==='restored'){
-        sel.value.glbRestored='idb://glbFiles/'+idbKey;
-        sel.value.glbRestoredName=file.name;
-        sel.value.has3D=true;
-        model3DMode.value='restored';
-      }else{
-        sel.value.glbUnrestored='idb://glbFiles/'+idbKey;
-        sel.value.glbUnrestoredName=file.name;
-        sel.value.has3D=true;
-      }
-      updateUserRelicInStorage(sel.value);
-      alert((type==='restored'?'已修复':'待修复')+'3D模型上传成功，正在加载...');
-      initViewer3D();
-    });
+    var blobUrl=URL.createObjectURL(file);
+    if(type==='restored'){
+      sel.value.glbRestored=blobUrl;
+      sel.value.glbRestoredName=file.name;
+      sel.value.has3D=true;
+      sel.value._glbRestoredIdbKey=idbKey;
+      model3DMode.value='restored';
+    }else{
+      sel.value.glbUnrestored=blobUrl;
+      sel.value.glbUnrestoredName=file.name;
+      sel.value.has3D=true;
+      sel.value._glbUnrestoredIdbKey=idbKey;
+    }
+    updateUserRelicInStorage(sel.value);
+    idbSave('glbFiles',idbKey,file).catch(function(e){console.warn('IDB save failed:',e);});
+    alert((type==='restored'?'已修复':'待修复')+'3D模型上传成功，正在加载...');
+    initViewer3D();
   }
 
   return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
@@ -850,5 +870,5 @@ createApp({setup(){
     aiSearch,aiRelic,aiAnalyzing,aiResult,aiAnalyze,analyzeRelicAI,
     model3DMode,loading3D,switch3DMode,initViewer3D,onGLBUpload,onRelicGLBUpload,onImgUpload,
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly,
-    resolvedImgs};
+    resolvedImgs,showNicknameModal,nickInput,openNicknameModal,saveNickname};
 }}).mount('#app');
