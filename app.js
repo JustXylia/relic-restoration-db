@@ -211,38 +211,30 @@ function relicImg(type,seed){
   return 'img/relics/'+pool[Math.abs(seed)%pool.length];
 }
 
-// Deterministic CSS filter per relic — makes each relic's image visually unique
+// Deterministic CSS filter per relic — subtle variation per relic
 function relicFilter(r){
   if(!r||!r.id)return '';
   var hash=0;var s=r.id;
   for(var i=0;i<s.length;i++){hash=((hash<<5)-hash+s.charCodeAt(i))|0;}
   var h=Math.abs(hash);
-  var hue=(h%360);
-  var bright=0.75+((h>>3)%50)/100;
-  var contrast=0.80+((h>>6)%40)/100;
-  var sat=0.60+((h>>9)%80)/100;
-  var sepia=((h>>12)%35)/100;
-  var blur=((h>>15)%5)/10;
-  var inv=(h>>17)%11===0?' invert(0.08)':'';
-  var grayscale=((h>>19)%25)/100;
-  var drop=((h>>22)%3===0)?' drop-shadow(2px 2px 0 rgba(0,0,0,0.1))':'';
-  return 'hue-rotate('+hue+'deg) brightness('+bright+') contrast('+contrast+') saturate('+sat+') sepia('+sepia+') blur('+blur+'px) grayscale('+grayscale+')'+inv+drop;
+  var hue=(h%30)-15;
+  var bright=0.96+((h>>3)%8)/100;
+  var contrast=0.96+((h>>6)%8)/100;
+  var sat=0.95+((h>>9)%10)/100;
+  return 'hue-rotate('+hue+'deg) brightness('+bright+') contrast('+contrast+') saturate('+sat+')';
 }
-// Deterministic CSS transform per relic — adds more visual variety
+// Deterministic CSS transform per relic — subtle variety
 function relicTransform(r){
   if(!r||!r.id)return '';
   var hash=0;var s=r.id;
   for(var i=0;i<s.length;i++){hash=((hash<<5)-hash+s.charCodeAt(i))|0;}
   var h=Math.abs(hash);
-  var scale=0.80+((h>>2)%15)/100;
-  var rotate=((h>>5)%6)-3;
-  var flipX=(h>>8)%2===0?' scaleX(-1)':'';
-  var flipY=(h>>10)%2===0?' scaleY(-1)':'';
-  var skewX=((h>>12)%3)-1.5;
-  var skewY=((h>>15)%2)-1;
-  var originX=25+((h>>18)%50);
-  var originY=25+((h>>21)%50);
-  return 'transform: scale('+scale+') rotate('+rotate+'deg) skewX('+skewX+'deg) skewY('+skewY+'deg)'+flipX+flipY+'; transform-origin: '+originX+'% '+originY+'%;';
+  var scale=0.97+((h>>2)%4)/100;
+  var rotate=((h>>5)%3)-1;
+  var flipX=(h>>8)%3===0?' scaleX(-1)':'';
+  var originX=40+((h>>18)%20);
+  var originY=40+((h>>21)%20);
+  return 'transform: scale('+scale+') rotate('+rotate+'deg)'+flipX+'; transform-origin: '+originX+'% '+originY+'%;';
 }
 // Combined full style string for relic images (filter + transform) — use for large images
 function relicStyle(r, extraFilter){
@@ -258,12 +250,12 @@ function relicStyleThumb(r, extraFilter){
   return 'filter: '+f+';';
 }
 
-// Stage-specific CSS filters — derive stage images from the main relic image
+// Stage-specific CSS filters — subtle differentiation between stages
 function stageFilter(stage){
-  if(stage==='excavated')return 'sepia(0.7) brightness(0.55) contrast(1.3) saturate(0.5)';
-  if(stage==='cleaned')return 'brightness(1.12) contrast(1.06) sepia(0.08) saturate(0.9)';
-  if(stage==='during')return 'brightness(0.88) contrast(1.18) saturate(0.65) hue-rotate(-5deg)';
-  if(stage==='after')return 'brightness(1.05) contrast(1.1) saturate(1.18)';
+  if(stage==='excavated')return 'sepia(0.25) brightness(0.85) contrast(1.1) saturate(0.8)';
+  if(stage==='cleaned')return 'brightness(1.05) contrast(1.03) sepia(0.04) saturate(0.95)';
+  if(stage==='during')return 'brightness(0.95) contrast(1.05) saturate(0.9)';
+  if(stage==='after')return 'brightness(1.03) contrast(1.05) saturate(1.08)';
   return '';
 }
 
