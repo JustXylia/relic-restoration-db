@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>巴渝文物修复数据库 — 重庆区域文物管控平台</title>
+<title>文物修复数据库 — 区域文物管控平台</title>
 <script src="vue.min.js?v=20260825" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -148,7 +148,7 @@ tr:hover td{background:#F8FAFC}
 .filters input{flex:1;min-width:200px}
 
 .dh{display:flex;gap:24px;margin-bottom:20px}
-.dh-img{width:200px;height:200px;border-radius:12px;object-fit:cover;box-shadow:var(--sh-lg);flex-shrink:0}
+.dh-img{width:200px;height:200px;border-radius:12px;object-fit:cover;box-shadow:var(--sh-lg);flex-shrink:0;overflow:hidden}
 .dh-info{flex:1}.dh-info h2{font-size:22px;margin-bottom:8px}
 .dh-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .dh-meta .mi-label{font-size:12px;color:var(--c-text-3)}.dh-meta .mi-val{font-weight:600;margin-top:2px;font-size:14px}
@@ -156,8 +156,7 @@ tr:hover td{background:#F8FAFC}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
 .gallery .g-item{border-radius:8px;overflow:hidden;cursor:pointer;transition:.2s;background:var(--c-bg)}
 .gallery .g-item:hover{transform:scale(1.03);box-shadow:var(--sh-lg)}
-.gallery .g-item img{width:100%;height:140px;object-fit:cover}
-.gallery .g-cap{padding:6px 8px;font-size:11px;color:var(--c-text-3);text-align:center}
+.gallery .g-item img{width:100%;height:140px;object-fit:cover}.gallery .g-cap{padding:6px 8px;font-size:11px;color:var(--c-text-3);text-align:center}
 
 .alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .alert svg{width:16px;height:16px;flex-shrink:0}
@@ -221,8 +220,6 @@ tr:hover td{background:#F8FAFC}
     </div>
   </div>
 </div>
-
-<!-- MAIN -->
 <div v-else class="app">
   <div class="sidebar">
     <div class="logo">
@@ -233,7 +230,7 @@ tr:hover td{background:#F8FAFC}
     <div class="nav-section">概览</div>
     <div class="nav-item" :class="{active:page==='dashboard'}" @click="nav('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>总览面板</span></div>
     <div class="nav-section">文物管理</div>
-    <div class="nav-item" :class="{active:page==='thematic'}" @click="nav('thematic')" v-if="canEdit || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg><span>专题库管理</span></div>
+    <div class="nav-item" :class="{active:page==='thematic'}" @click="nav('thematic')" v-if="canAssign || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg><span>专题库管理</span></div>
     <div class="nav-item" :class="{active:page==='relics'}" @click="nav('relics')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg><span>文物列表</span></div>
     <div class="nav-section">修复管控</div>
     <div class="nav-item" :class="{active:page==='assignment'}" @click="nav('assignment')" v-if="canAssign"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg><span>修复分配</span></div>
@@ -249,7 +246,7 @@ tr:hover td{background:#F8FAFC}
       <div class="crumb">首页 <b>/ {{pageTitle}}</b></div>
       <div class="actions">
         <div class="icon-btn" @click="showNoti=!showNoti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge-dot" v-if="notifications.length"></span></div>
-        <div class="user-chip" style="flex-direction:row;align-items:center;gap:8px" @click="openNicknameModal" title="点击修改昵称"><div class="avatar">{{(currentUser.name||'?')[0]}}</div><div style="display:flex;flex-direction:column;line-height:1.3"><span style="font-size:13px;font-weight:600">{{currentUser.name}}</span><span style="font-size:11px;color:var(--c-text-3)">{{currentUser.roleName}}</span></div></div>
+        <div class="user-chip" style="flex-direction:row;align-items:center;gap:8px" @click="openNicknameModal" title="点击修改个人设置"><div class="avatar">{{(currentUser.nickname||currentUser.name||'?')[0]}}</div><div style="display:flex;flex-direction:column;line-height:1.3"><span style="font-size:13px;font-weight:600">{{currentUser.nickname||currentUser.name}}</span><span style="font-size:11px;color:var(--c-text-3)">{{currentUser.roleName}}</span></div></div>
         <div class="icon-btn" @click="logout" title="退出"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
       </div>
     </div>
@@ -260,8 +257,18 @@ tr:hover td{background:#F8FAFC}
       <div v-if="page==='dashboard'" key="dashboard">
         <div class="card" style="background:linear-gradient(135deg,var(--blue0),var(--blue2));color:#fff;margin-bottom:20px;border:none">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div><h2 style="font-size:20px;margin-bottom:6px">欢迎回来，{{currentUser.name}}</h2>
-            <p style="opacity:.7;font-size:13px">重庆区域共 {{relics.length}} 件文物 · {{repairingCount}} 件修复中 · {{pendingCount}} 件待处理 · {{allUsers.length}} 名人员</p></div>
+            <div><h2 style="font-size:20px;margin-bottom:6px">欢迎回来，{{currentUser.nickname||currentUser.name}}</h2>
+            <p style="opacity:.7;font-size:13px">您可访问范围内共 {{scopedRelics.length}} 件文物 · {{repairingCount}} 件修复中 · {{pendingCount}} 件待处理 <span v-if="canManageUsers">· {{allUsers.length}} 名人员</span></p>
+            <div v-if="currentUser.roleName==='修复师'" style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
+              <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:8px;font-size:13px"><b>{{myPendingTotal}}</b> 件待处理</div>
+              <div style="background:rgba(59,130,246,.3);padding:6px 14px;border-radius:8px;font-size:13px">待修复 <b>{{myPendingRepairCount}}</b></div>
+              <div style="background:rgba(16,185,129,.3);padding:6px 14px;border-radius:8px;font-size:13px">修复中 <b>{{myRepairingCount}}</b></div>
+              <div style="background:rgba(100,116,139,.3);padding:6px 14px;border-radius:8px;font-size:13px">已完成 <b>{{myDoneCount}}</b></div>
+            </div>
+            <div v-else-if="currentUser.roleName==='系统管理员'||currentUser.roleName==='修复委员会主任'" style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
+              <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:8px;font-size:13px">全局待处理 <b>{{myPendingTotal}}</b> 件</div>
+            </div>
+            </div>
             <svg viewBox="0 0 64 64" width="64" height="64" fill="none" opacity=".3"><rect x="12" y="10" width="40" height="44" rx="3" stroke="#fff" stroke-width="2.5"/><line x1="20" y1="10" x2="20" y2="4" stroke="#fff" stroke-width="2.5"/><line x1="44" y1="10" x2="44" y2="4" stroke="#fff" stroke-width="2.5"/><line x1="20" y1="22" x2="44" y2="22" stroke="#fff" stroke-width="2"/><line x1="20" y1="32" x2="44" y2="32" stroke="#fff" stroke-width="2"/><line x1="20" y1="42" x2="36" y2="42" stroke="#fff" stroke-width="2"/></svg>
           </div>
         </div>
@@ -279,14 +286,16 @@ tr:hover td{background:#F8FAFC}
         <div class="card">
           <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>最新上传文物</span><button class="btn btn-outline btn-sm" @click="nav('relics')">查看全部</button></div>
           <table><thead><tr><th>编号</th><th></th><th>类型</th><th>出土/来源地</th><th>上传人</th><th>上传时间</th><th>状态</th><th>操作</th></tr></thead><tbody>
-            <tr v-for="r in relics.slice(0,6)" :key="r.id"><td class="t-code">{{r.id}}</td>
-            <td><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" style="width:32px;height:32px;border-radius:6px;object-fit:cover"></td>
+            <tr v-for="r in scopedRelics.slice(0,6)" :key="r.id"><td class="t-code">{{r.id}}</td>
+            <td><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" :style="'width:32px;height:32px;border-radius:6px;object-fit:cover;'+relicStyleThumb(r)"></td>
             <td>{{r.type}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{r.uploadedBy}}</td><td class="t-sub">{{r.uploadTime}}</td>
             <td><span class="badge" :class="sb(r.status)">{{r.status}}</span></td><td><button class="btn btn-outline btn-xs" @click="viewRelic(r)">查看</button></td></tr>
           </tbody></table>
         </div>
         <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/></svg>待处理事项</span></div>
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/></svg>待处理事项</span>
+          <div v-if="myPendingTotal>0" style="padding:4px 14px;background:var(--c-warn-bg);border-radius:8px;font-size:13px;color:#92400E;font-weight:600">共 {{myPendingTotal}} 件待处理</div>
+          </div>
           <div v-if="pendingItems.length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>暂无待处理事项</p></div>
           <div v-for="item in pendingItems" :key="item.id" class="alert" :class="'alert-'+item.level"><span>{{item.icon}}</span><span>{{item.text}}</span><button class="btn btn-sm" :class="'btn-'+item.btnType" @click="item.action" style="margin-left:auto">{{item.btnText}}</button></div>
         </div>
@@ -295,7 +304,7 @@ tr:hover td{background:#F8FAFC}
       <!-- THEMATIC -->
       <div v-else-if="page==='thematic'" key="thematic">
         <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>专题库管理（{{libs.length}}个）</span><button v-if="canEdit || canManageUsers" class="btn btn-primary btn-sm" @click="showLibModal=true">+ 新建专题库</button></div>
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>专题库管理（{{libs.length}}个）</span><button v-if="canManageUsers" class="btn btn-primary btn-sm" @click="showLibModal=true">+ 新建专题库</button></div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
             <div v-for="lib in libs" :key="lib.id" class="card" style="cursor:pointer;margin-bottom:0" @click="filterByLib(lib)">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
@@ -312,9 +321,9 @@ tr:hover td{background:#F8FAFC}
       <!-- RELICS -->
       <div v-else-if="page==='relics'" key="relics">
         <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{relics.length}}件）</span><button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">移动端上传模拟</button></div>
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{scopedRelics.length}}件）</span><button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">上传文物</button></div>
           <div class="tabs">
-            <div class="tab" :class="{active:fStatus==='全部'}" @click="fStatus='全部'">全部 <span class="cnt">{{relics.length}}</span></div>
+            <div class="tab" :class="{active:fStatus==='全部'}" @click="fStatus='全部'">全部 <span class="cnt">{{scopedRelics.length}}</span></div>
             <div class="tab" :class="{active:fStatus==='待上传'}" @click="fStatus='待上传'">待上传 <span class="cnt">{{sc('待上传')}}</span></div>
             <div class="tab" :class="{active:fStatus==='已上传'}" @click="fStatus='已上传'">已上传 <span class="cnt">{{sc('已上传')}}</span></div>
             <div class="tab" :class="{active:fStatus==='待修复'}" @click="fStatus='待修复'">待修复 <span class="cnt">{{sc('待修复')}}</span></div>
@@ -332,10 +341,10 @@ tr:hover td{background:#F8FAFC}
             <tbody>
               <tr v-for="r in pagedRelics" :key="r.id">
                 <td class="t-code">{{r.id}}</td>
-                <td><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" style="width:36px;height:36px;border-radius:6px;object-fit:cover"></td>
+                <td><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" :style="'width:36px;height:36px;border-radius:6px;object-fit:cover;'+relicStyleThumb(r)"></td>
                 <td>{{r.type}}</td><td class="t-sub">{{r.library}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{r.uploadedBy}}</td><td class="t-sub">{{r.uploadTime}}</td>
                 <td><span class="badge" :class="sb(r.status)">{{r.status}}</span></td>
-                <td><button class="btn btn-outline btn-xs" @click="viewRelic(r)">查看</button></td>
+                <td style="white-space:nowrap"><button class="btn btn-outline btn-xs" @click="viewRelic(r)">查看</button> <button v-if="canAssign||canEdit" class="btn btn-outline btn-xs" @click="openEditRestorer(r)">编辑</button> <button v-if="canDelete" class="btn btn-outline btn-xs" style="color:#dc2626;border-color:#fecaca" @click="delRelic(r)">删除</button></td>
               </tr>
             </tbody>
           </table>
@@ -355,7 +364,7 @@ tr:hover td{background:#F8FAFC}
         <button class="btn btn-outline btn-sm" @click="nav('relics')" style="margin-bottom:16px">← 返回列表</button>
         <div class="card" v-if="sel">
           <div class="dh">
-            <img loading="lazy" :src="sel.imgBefore" class="dh-img" v-if="sel.imgBefore">
+            <img loading="lazy" :src="latestImg(sel)" @error="imgFallback" class="dh-img" v-if="sel.imgBefore" :style="relicStyleThumb(sel)">
             <div class="dh-info">
               <h2>{{sel.id}}</h2>
               <div style="margin-bottom:14px"><span class="badge" :class="sb(sel.status)" style="margin-right:8px">{{sel.status}}</span><span class="t-code">{{sel.id}}</span></div>
@@ -387,11 +396,9 @@ tr:hover td{background:#F8FAFC}
           </div></div>
           <div v-if="dTab==='images'">
             <div class="gallery">
-              <div class="g-item" v-if="sel.imgBefore"><img loading="lazy" :src="sel.imgBefore"><div class="g-cap">刚出土 · 病害记录</div></div>
-              <div class="g-item" v-if="sel.imgBefore"><img loading="lazy" :src="sel.imgBefore" style="filter:contrast(1.1)"><div class="g-cap">清理后 · 初步处理</div></div>
-              <div class="g-item" v-if="sel.imgBefore"><img loading="lazy" :src="sel.imgBefore" style="filter:brightness(1.05)"><div class="g-cap">修复中 · 过程记录</div></div>
+              <div class="g-item" v-for="(s,idx) in completedStageImgs(sel)" :key="idx"><img loading="lazy" :src="resolvedImgs[s.key]||s.img" @error="imgFallback" :style="relicStyleThumb(sel, s.filter)"><div class="g-cap">{{s.label}}</div></div>
             </div>
-            <p style="margin-top:12px;font-size:13px;color:var(--c-text-3)">不同修复阶段对应不同影像资料，真实反映文物从病害到修复完成的全过程</p>
+            <p style="margin-top:12px;font-size:13px;color:var(--c-text-3)">已完成阶段的影像资料，未完成阶段暂不显示</p>
           </div>
           <div v-if="dTab==='3d'">
             <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -443,6 +450,19 @@ tr:hover td{background:#F8FAFC}
                 <div><div class="mi-label">修复师</div><div class="mi-val">{{sel.restorer}}</div></div>
                 <div style="flex:1"><div class="mi-label">修复进度</div><div style="display:flex;align-items:center;gap:8px;margin-top:2px"><div class="pbar" style="flex:1"><div class="fill ok" :style="{width:Math.max(sel.progress,3)+'%'}"></div></div><span style="font-weight:700">{{sel.progress}}%</span></div></div>
                 <div><div class="mi-label">预计完成</div><div class="mi-val">{{sel.deadline}}</div></div>
+              </div>
+              <div style="margin-bottom:16px;padding:16px;background:var(--c-bg);border-radius:var(--r)">
+                <div style="font-weight:600;font-size:13px;margin-bottom:10px">阶段控制</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                  <span style="font-size:12px;color:var(--c-text-2)">当前阶段：<b>{{stageFullLabel(sel)}}</b></span>
+                  <button v-if="sel.status==='待修复'" class="btn btn-primary btn-sm" @click="startRepair(sel)">开始修复</button>
+                  <button v-if="sel.status==='修复中'&&sel.progress<100" class="btn btn-success btn-sm" @click="advanceStage(sel)">进入下一阶段</button>
+                  <button v-if="sel.status==='修复中'" class="btn btn-warn btn-sm" @click="completeRepair(sel)">标记修复完成</button>
+                  <div v-if="sel.status==='修复中'" style="display:flex;align-items:center;gap:6px;margin-left:8px">
+                    <input type="range" min="0" max="100" :value="sel.progress" @input="setProgress(sel,$event.target.value)" style="width:120px">
+                    <span style="font-size:12px;color:var(--c-text-2)">{{sel.progress}}%</span>
+                  </div>
+                </div>
               </div>
               <table><thead><tr><th>日期</th><th>工作内容</th><th>使用材料</th><th>工时</th><th>修复师</th></tr></thead><tbody>
                 <tr v-for="log in repairLogs" :key="log.id"><td class="t-sub">{{log.date}}</td><td>{{log.content}}</td><td class="t-sub">{{log.materials}}</td><td>{{log.hours}}h</td><td class="t-sub">{{log.restorer}}</td></tr>
@@ -513,11 +533,11 @@ tr:hover td{background:#F8FAFC}
           <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg>修复任务分配</span></div>
           <div class="alert alert-info"><span>以下文物已完成上传审核，等待分配修复人员</span></div>
           <table><thead><tr><th>编号</th><th></th><th>类型</th><th>病害描述</th><th>上传时间</th><th>操作</th></tr></thead><tbody>
-            <tr v-for="r in relics.filter(x=>x.status==='已上传').slice(0,20)" :key="r.id"><td class="t-code">{{r.id}}</td>
-            <td><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" style="width:32px;height:32px;border-radius:6px;object-fit:cover"></td>
+            <tr v-for="r in scopedRelics.filter(x=>x.status==='已上传').slice(0,20)" :key="r.id"><td class="t-code">{{r.id}}</td>
+            <td><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" :style="'width:32px;height:32px;border-radius:6px;object-fit:cover;'+relicStyleThumb(r)"></td>
             <td>{{r.type}}</td><td class="t-sub">{{r.disease}}</td><td class="t-sub">{{r.uploadTime}}</td><td><button class="btn btn-primary btn-xs" @click="openAssign(r)">分配修复师</button></td></tr>
           </tbody></table>
-          <div v-if="relics.filter(x=>x.status==='已上传').length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>暂无待分配文物</p></div>
+          <div v-if="scopedRelics.filter(x=>x.status==='已上传').length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>暂无待分配文物</p></div>
         </div>
       </div>
 
@@ -525,19 +545,34 @@ tr:hover td{background:#F8FAFC}
       <div v-else-if="page==='monitor'" key="monitor">
         <div class="card">
           <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l4-4 4 4 4-6 4 6"/><path d="M3 3v18h18"/></svg>修复进度实时监控</span></div>
+          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+            <div style="padding:8px 16px;background:#DBEAFE;border-radius:8px;font-size:13px;color:#1E40AF">待修复 <b>{{monitorPendingCount}}</b> 件</div>
+            <div style="padding:8px 16px;background:#D1FAE5;border-radius:8px;font-size:13px;color:#065F46">修复中 <b>{{monitorRepairingCount}}</b> 件</div>
+            <div style="padding:8px 16px;background:#F1F5F9;border-radius:8px;font-size:13px;color:#475569">合计 <b>{{filteredMonitor.length}}</b> 件</div>
+          </div>
           <div class="filters">
             <input v-model="monSearch" placeholder="搜索文物编号、修复师..." style="flex:1">
+            <select v-model="monStatus"><option value="">全部状态</option><option value="待修复">待修复</option><option value="修复中">修复中</option></select>
             <select v-model="monStage"><option value="">全部阶段</option><option value="初期">初期清洗(0-30%)</option><option value="中期">中期修复(30-70%)</option><option value="后期">后期收尾(70-100%)</option></select>
           </div>
           <div class="pc-grid">
-            <div v-for="r in filteredMonitor" :key="r.id" class="pc" :class="{warn:r.progress<40,no:r.progress<20}" @click="viewRelic(r)">
-              <div class="pc-top"><img loading="lazy" v-if="r.imgBefore" :src="resolvedImgs[r.id]||r.imgBefore" class="pc-img"><div class="pc-info"><div class="pc-name">{{r.id}}</div></div></div>
-              <div class="pc-restorer">修复师: {{r.restorer}} | 预计: {{r.deadline}}</div>
-              <div class="pc-prog"><div class="pbar" style="flex:1"><div class="fill" :class="r.progress<20?'no':r.progress<40?'warn':'ok'" :style="{width:Math.max(r.progress,3)+'%'}"></div></div><span class="pc-pct">{{r.progress}}%</span></div>
-              <div style="margin-top:6px;font-size:12px;color:var(--c-text-3)">{{stageLabel(r.progress)}} | 最后更新: {{r.lastUpdate}}</div>
+            <div v-for="r in filteredMonitor" :key="r.id" class="pc" :class="{warn:r.status==='待修复'||r.progress<40,no:r.progress<20}" @click.stop="viewRelic(r)">
+              <div class="pc-top"><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" class="pc-img" :style="relicStyleThumb(r)"><div class="pc-info"><div class="pc-name">{{r.id}}</div><span class="badge" :class="sb(r.status)" style="margin-top:2px">{{r.status}}</span></div></div>
+              <div class="pc-restorer">修复师: {{r.restorer||'未分配'}} | 预计: {{r.deadline||'未设定'}}</div>
+              <div class="pc-prog" v-if="r.status==='修复中'"><div class="pbar" style="flex:1"><div class="fill" :class="r.progress<20?'no':r.progress<40?'warn':'ok'" :style="{width:Math.max(r.progress,3)+'%'}"></div></div><span class="pc-pct">{{r.progress}}%</span></div>
+              <div class="pc-prog" v-else><div class="pbar" style="flex:1"><div class="fill" :class="'warn'" :style="{width:'3%'}"></div></div><span class="pc-pct" style="color:var(--c-warn)">待开始</span></div>
+              <div style="margin-top:6px;font-size:12px;color:var(--c-text-3)">{{stageFullLabel(r)}} | 最后更新: {{r.lastUpdate||'—'}}</div>
+              <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap" @click.stop>
+                <button v-if="r.status==='待修复'" class="btn btn-primary btn-xs" @click.stop="startRepair(r)">开始修复</button>
+                <template v-if="r.status==='修复中'">
+                  <button class="btn btn-success btn-xs" @click.stop="advanceStage(r)" v-if="r.progress<100">进入下一阶段</button>
+                  <button class="btn btn-outline btn-xs" @click.stop="viewRelic(r)">详情</button>
+                  <button class="btn btn-warn btn-xs" @click.stop="completeRepair(r)">标记完成</button>
+                </template>
+              </div>
             </div>
           </div>
-          <div v-if="filteredMonitor.length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 2 6-6"/></svg><p>当前没有修复中的文物</p></div>
+          <div v-if="filteredMonitor.length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 2 6-6"/></svg><p>当前没有待修复或修复中的文物</p></div>
         </div>
         <div class="card"><div class="card-h">修复师工作量分布</div><div ref="chartWorkload" style="height:280px"></div></div>
       </div>
@@ -711,33 +746,35 @@ tr:hover td{background:#F8FAFC}
       </transition>
     </div>
   </div>
-</div>
-
-<!-- MODALS -->
-<div v-if="showLibModal" class="mask" @click.self="showLibModal=false"><div class="modal"><div class="modal-h"><h3>新建专题库</h3><span class="x" @click="showLibModal=false">×</span></div><div class="modal-b"><div class="fg"><label>专题库名称</label><input v-model="newLib.name" placeholder="如：巴渝青铜器专题"></div><div class="fg"><label>编号前缀</label><input v-model="newLib.prefix" placeholder="如：BYQ"></div><div class="fg"><label>描述</label><textarea v-model="newLib.desc" rows="3"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showLibModal=false">取消</button><button class="btn btn-primary" @click="createLib">创建</button></div></div></div>
-<div v-if="showUploadModal" class="mask" @click.self="showUploadModal=false"><div class="modal"><div class="modal-h"><h3>上传文物</h3><span class="x" @click="showUploadModal=false">×</span></div><div class="modal-b"><div class="fg"><label>选择专题库</label><select v-model="upForm.library"><option v-for="lib in libs" :key="lib.id" :value="lib.name">{{lib.name}}</option></select></div><div class="fg"><label>文物代号</label><input v-model="upForm.name" placeholder="自动生成编号"></div><div class="frow"><div class="fg"><label>文物类型</label><select v-model="upForm.type"><option v-for="t in types" :key="t">{{t}}</option></select></div><div class="fg"><label>年代</label><input v-model="upForm.era"></div></div><div class="fg"><label>出土/来源地</label><input v-model="upForm.site"></div><div class="frow"><div class="fg"><label>尺寸(cm)</label><input v-model="upForm.size"></div><div class="fg"><label>重量(g)</label><input v-model="upForm.weight"></div></div><div class="fg"><label>病害描述</label><textarea v-model="upForm.disease" rows="2"></textarea></div><div class="fg"><label>文物图片</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onImgUpload" style="display:none">选择图片</label><span v-if="upForm.imgName" style="font-size:12px;color:var(--c-ok)">{{upForm.imgName}}</span></div></div><div class="fg"><label>GLB 3D模型（可选）</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept=".glb,.gltf" @change="onGLBUpload" style="display:none">选择文件</label><span v-if="upForm.glbName" style="font-size:12px;color:var(--c-ok)">{{upForm.glbName}}</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUploadModal=false">取消</button><button class="btn btn-success" @click="doUpload">提交上传</button></div></div></div>
-<div v-if="showAssignModal" class="mask" @click.self="showAssignModal=false"><div class="modal"><div class="modal-h"><h3>分配修复任务</h3><span class="x" @click="showAssignModal=false">×</span></div><div class="modal-b" v-if="assignTarget"><div class="alert alert-info">文物编号: {{assignTarget.id}}</div><div class="fg"><label>选择修复师</label><select v-model="assignForm.restorer"><option value="">请选择</option><option v-for="r in restorers" :key="r" :value="r">{{r}}</option></select></div><div class="frow"><div class="fg"><label>修复期限</label><input type="date" v-model="assignForm.deadline"></div><div class="fg"><label>优先级</label><select v-model="assignForm.priority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div></div><div class="fg"><label>特殊要求</label><textarea v-model="assignForm.req" rows="2"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showAssignModal=false">取消</button><button class="btn btn-primary" @click="confirmAssign">确认分配</button></div></div></div>
-<div v-if="showUserModal" class="mask" @click.self="showUserModal=false"><div class="modal"><div class="modal-h"><h3>新增用户</h3><span class="x" @click="showUserModal=false">×</span></div><div class="modal-b"><div class="frow"><div class="fg"><label>姓名</label><input v-model="newUser.name"></div><div class="fg"><label>工号</label><input v-model="newUser.workId"></div></div><div class="frow"><div class="fg"><label>角色</label><select v-model="newUser.roleId"><option v-for="r in roles" :key="r.id" :value="r.id">{{r.name}}</option></select></div><div class="fg"><label>部门</label><input v-model="newUser.department"></div></div><div class="fg"><label>手机号</label><input v-model="newUser.phone"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUserModal=false">取消</button><button class="btn btn-primary" @click="createUser">创建</button></div></div></div>
-<div v-if="showAuditModal" class="mask" @click.self="showAuditModal=false"><div class="modal wide"><div class="modal-h"><h3>用户审核 — {{auditTarget?.name}}</h3><span class="x" @click="showAuditModal=false">×</span></div><div class="modal-b" v-if="auditTarget"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px"><div class="fg"><label>姓名</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.name}}</div></div><div class="fg"><label>工号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.workId}}</div></div><div class="fg"><label>手机号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.phone}}</div></div><div class="fg"><label>部门</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.department}}</div></div></div><div class="fg"><label>审核：设置查看范围</label><select v-model="auditForm.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>审核：功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:auditForm.perms[perm.key]}" @click="auditForm.perms[perm.key]=!auditForm.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-danger" @click="rejectFromAudit">驳回</button><button class="btn btn-success" @click="approveUser">审核通过</button></div></div></div>
-<div v-if="showPermModal" class="mask" @click.self="showPermModal=false"><div class="modal"><div class="modal-h"><h3>权限管理 — {{permTarget?.name}}</h3><span class="x" @click="showPermModal=false">×</span></div><div class="modal-b" v-if="permTarget"><div class="fg"><label>查看范围</label><select v-model="permTarget.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:permTarget.perms[perm.key]}" @click="permTarget.perms[perm.key]=!permTarget.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showPermModal=false">取消</button><button class="btn btn-primary" @click="showPermModal=false">保存</button></div></div></div>
-<div v-if="showNoti" class="mask" @click="showNoti=false"><div style="position:absolute;top:60px;right:28px;width:320px;background:#fff;border-radius:10px;box-shadow:var(--sh-lg);z-index:1001;overflow:hidden"><div style="padding:14px 16px;border-bottom:1px solid var(--c-border);font-weight:700;font-size:14px">消息通知</div><div v-for="n in notifications" :key="n.id" style="padding:12px 16px;border-bottom:1px solid var(--c-border);font-size:13px"><div>{{n.text}}</div><div style="font-size:11px;color:var(--c-text-3);margin-top:2px">{{n.time}}</div></div></div></div>
-
-</div>
 
 <div v-if="showNicknameModal" class="mask" @click.self="showNicknameModal=false"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>个人设置</h3><span class="x" @click="showNicknameModal=false">×</span></div><div class="modal-b">
-<div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;padding:14px;background:var(--blue7);border-radius:8px"><div class="avatar" style="width:48px;height:48px;font-size:20px">{{(currentUser.name||'?')[0]}}</div><div><div style="font-size:16px;font-weight:700">{{currentUser.name}}</div><div style="font-size:12px;color:var(--c-text-3)">{{currentUser.roleName}}</div></div></div>
+<div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;padding:14px;background:var(--blue7);border-radius:8px"><div class="avatar" style="width:48px;height:48px;font-size:20px">{{(currentUser.nickname||currentUser.name||'?')[0]}}</div><div><div style="font-size:16px;font-weight:700">{{currentUser.nickname||currentUser.name}}</div><div style="font-size:12px;color:var(--c-text-3)">{{currentUser.roleName}} · 工号{{currentUser.workId}}</div></div></div>
 <div class="fg"><label>修改昵称</label><input type="text" v-model="nickInput" placeholder="请输入新昵称"></div>
 <div class="fg"><label>当前身份</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px;font-size:13px">{{currentUser.roleName}}</div></div>
 <div class="fg"><label>申请身份变更</label><select v-model="roleApply"><option value="">不申请</option><option value="修复师">修复师</option><option value="保管员">保管员</option><option value="研究人员">研究人员</option><option value="修复委员会主任">修复委员会主任</option></select></div>
 <div class="fg"><label>申请权限说明</label><textarea v-model="permApply" rows="2" placeholder="如需申请额外权限，请说明原因"></textarea></div>
 <div style="margin-top:8px;padding:10px 14px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E">身份变更和权限申请需经管理员审核通过后生效</div>
 </div><div class="modal-f"><button class="btn btn-outline" @click="showNicknameModal=false">取消</button><button class="btn btn-primary" @click="saveNickname">保存设置</button></div></div></div>
+<div v-if="showLibModal" class="mask" @click.self="showLibModal=false"><div class="modal"><div class="modal-h"><h3>新建专题库</h3><span class="x" @click="showLibModal=false">×</span></div><div class="modal-b"><div class="fg"><label>专题库名称</label><input v-model="newLib.name" placeholder="如：巴渝青铜器专题"></div><div class="fg"><label>编号前缀</label><input v-model="newLib.prefix" placeholder="如：BYQ"></div><div class="fg"><label>描述</label><textarea v-model="newLib.desc" rows="3"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showLibModal=false">取消</button><button class="btn btn-primary" @click="createLib">创建</button></div></div></div>
+<div v-if="showUploadModal" class="mask" @click.self="showUploadModal=false"><div class="modal"><div class="modal-h"><h3>上传文物</h3><span class="x" @click="showUploadModal=false">×</span></div><div class="modal-b"><div class="fg"><label>选择专题库</label><select v-model="upForm.library"><option v-for="lib in libs" :key="lib.id" :value="lib.name">{{lib.name}}</option></select></div><div class="fg"><label>文物代号</label><input v-model="upForm.name" placeholder="自动生成编号"></div><div class="frow"><div class="fg"><label>文物类型</label><select v-model="upForm.type"><option v-for="t in types" :key="t">{{t}}</option></select></div><div class="fg"><label>年代</label><input v-model="upForm.era"></div></div><div class="fg"><label>出土/来源地</label><input v-model="upForm.site"></div><div class="frow"><div class="fg"><label>尺寸(cm)</label><input v-model="upForm.size"></div><div class="fg"><label>重量(g)</label><input v-model="upForm.weight"></div></div><div class="fg"><label>病害描述</label><textarea v-model="upForm.disease" rows="2"></textarea></div><div class="fg"><label>文物图片</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onImgUpload" style="display:none">选择图片</label><span v-if="upForm.imgName" style="font-size:12px;color:var(--c-ok)">{{upForm.imgName}}</span></div></div><div class="fg"><label>GLB 3D模型（可选）</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept=".glb,.gltf" @change="onGLBUpload" style="display:none">选择文件</label><span v-if="upForm.glbName" style="font-size:12px;color:var(--c-ok)">{{upForm.glbName}}</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUploadModal=false">取消</button><button class="btn btn-success" @click="doUpload">提交上传</button></div></div></div>
+<div v-if="showAssignModal" class="mask" @click.self="showAssignModal=false"><div class="modal"><div class="modal-h"><h3>分配修复任务</h3><span class="x" @click="showAssignModal=false">×</span></div><div class="modal-b" v-if="assignTarget"><div class="alert alert-info">文物编号: {{assignTarget.id}}</div><div class="fg"><label>选择修复师</label><select v-model="assignForm.restorer"><option value="">请选择</option><option v-for="r in restorers" :key="r" :value="r">{{r}}</option></select></div><div class="frow"><div class="fg"><label>修复期限</label><input type="date" v-model="assignForm.deadline"></div><div class="fg"><label>优先级</label><select v-model="assignForm.priority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div></div><div class="fg"><label>特殊要求</label><textarea v-model="assignForm.req" rows="2"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showAssignModal=false">取消</button><button class="btn btn-primary" @click="confirmAssign">确认分配</button></div></div></div>
+<div v-if="showEditRestorerModal" class="mask" @click.self="showEditRestorerModal=false"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>编辑文物 — {{editRestorerTarget?.id}}</h3><span class="x" @click="showEditRestorerModal=false">×</span></div><div class="modal-b" v-if="editRestorerTarget"><div class="fg"><label>修复师</label><select v-model="editRestorerForm.restorer"><option value="">未分配</option><option v-for="r in restorers" :key="r" :value="r">{{r}}</option></select></div><div class="fg"><label>文物状态</label><select v-model="editRestorerForm.status"><option value="待上传">待上传</option><option value="已上传">已上传</option><option value="待修复">待修复</option><option value="修复中">修复中</option><option value="已修复">已修复</option></select></div><div class="fg"><label>修复期限</label><input type="date" v-model="editRestorerForm.deadline"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showEditRestorerModal=false">取消</button><button class="btn btn-primary" @click="saveEditRestorer">保存</button></div></div></div>
+<div v-if="showUserModal" class="mask" @click.self="showUserModal=false"><div class="modal"><div class="modal-h"><h3>新增用户</h3><span class="x" @click="showUserModal=false">×</span></div><div class="modal-b"><div class="frow"><div class="fg"><label>姓名</label><input v-model="newUser.name"></div><div class="fg"><label>工号</label><input v-model="newUser.workId"></div></div><div class="frow"><div class="fg"><label>角色</label><select v-model="newUser.roleId"><option v-for="r in roles" :key="r.id" :value="r.id">{{r.name}}</option></select></div><div class="fg"><label>部门</label><input v-model="newUser.department"></div></div><div class="fg"><label>手机号</label><input v-model="newUser.phone"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUserModal=false">取消</button><button class="btn btn-primary" @click="createUser">创建</button></div></div></div>
+<div v-if="showAuditModal" class="mask" @click.self="showAuditModal=false"><div class="modal wide"><div class="modal-h"><h3>用户审核 — {{auditTarget?.name}}</h3><span class="x" @click="showAuditModal=false">×</span></div><div class="modal-b" v-if="auditTarget"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px"><div class="fg"><label>姓名</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.name}}</div></div><div class="fg"><label>工号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.workId}}</div></div><div class="fg"><label>手机号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.phone}}</div></div><div class="fg"><label>部门</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.department}}</div></div></div><div class="fg"><label>审核：设置查看范围</label><select v-model="auditForm.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>审核：功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:auditForm.perms[perm.key]}" @click="auditForm.perms[perm.key]=!auditForm.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-danger" @click="rejectFromAudit">驳回</button><button class="btn btn-success" @click="approveUser">审核通过</button></div></div></div>
+<div v-if="showPermModal" class="mask" @click.self="showPermModal=false"><div class="modal"><div class="modal-h"><h3>权限管理 — {{permTarget?.name}}</h3><span class="x" @click="showPermModal=false">×</span></div><div class="modal-b" v-if="permTarget"><div class="fg"><label>查看范围</label><select v-model="permTarget.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:permTarget.perms[perm.key]}" @click="permTarget.perms[perm.key]=!permTarget.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showPermModal=false">取消</button><button class="btn btn-primary" @click="showPermModal=false">保存</button></div></div></div>
+<div v-if="showNoti" class="mask" @click="showNoti=false"><div style="position:absolute;top:60px;right:28px;width:320px;background:#fff;border-radius:10px;box-shadow:var(--sh-lg);z-index:1001;overflow:hidden"><div style="padding:14px 16px;border-bottom:1px solid var(--c-border);font-weight:700;font-size:14px">消息通知</div><div v-for="n in notifications" :key="n.id" style="padding:12px 16px;border-bottom:1px solid var(--c-border);font-size:13px"><div>{{n.text}}</div><div style="font-size:11px;color:var(--c-text-3);margin-top:2px">{{n.time}}</div></div></div></div>
+
+<div v-if="showStageImgModal" class="mask" @click.self="cancelStageImg"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>上传阶段图片（必填）</h3><span class="x" @click="cancelStageImg">×</span></div><div class="modal-b" v-if="stageImgTarget"><div class="alert alert-warn"><span>!</span><span>进入下一阶段必须上传 <b>{{stageImgLabel}}</b>，否则将保持当前阶段不变。文物编号: {{stageImgTarget.id}}</span></div><div class="fg"><label>{{stageImgLabel}} <span style="color:var(--c-danger)">*</span></label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onStageImgUpload" style="display:none">选择图片</label><span style="font-size:12px;color:var(--c-text-3)">支持 JPG/PNG，最大10MB</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="cancelStageImg">取消（保持原状态）</button><button class="btn btn-primary" @click="confirmStageImg">上传并进入下一阶段</button></div></div></div>
+
+
+</div>
+</div>
 
 <script src="three.min.js" defer></script>
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260825y" defer></script>
+<script src="app.js?v=20260826w" defer></script>
 </body>
 </html>
 
