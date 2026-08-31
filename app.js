@@ -1,4 +1,4 @@
-// IndexedDB for GLB blob persistence
+﻿// IndexedDB for GLB blob persistence
 var _db=null;
 function openDB(){
   return new Promise(function(resolve){
@@ -45,27 +45,124 @@ function idbDelete(store,key){
 
 // localStorage for relic metadata persistence
 var USER_RELICS_KEY='userRelics_v1';
+var REG_USERS_KEY='regUsers_v1';
+var LOGIN_KEY='loginUser_v1';
+var RELIC_OVERRIDES_KEY='relicOverrides_v1';
+var LIBS_KEY='libs_v1';
+var USERS_KEY='allUsers_v1';
+
 function saveUserRelics(relics){
   try{localStorage.setItem(USER_RELICS_KEY,JSON.stringify(relics));}catch(e){console.error('Save failed:',e);}
 }
 function loadUserRelics(){
-  try{var s=localStorage.getItem(USER_RELICS_KEY);return s?JSON.parse(s):[];}catch(e){return[];}
+  try{var s=localStorage.getItem(USER_RELICS_KEY);if(!s)return[];
+    var arr=JSON.parse(s);
+    arr.forEach(function(r){
+      if(r.imgBefore&&r.imgBefore.indexOf('blob:')===0)r.imgBefore='';
+      if(r.imgCleaned&&r.imgCleaned.indexOf('blob:')===0)r.imgCleaned='';
+      if(r.imgDuring&&r.imgDuring.indexOf('blob:')===0)r.imgDuring='';
+      if(r.imgAfter&&r.imgAfter.indexOf('blob:')===0)r.imgAfter='';
+      if(r.glbUnrestored&&r.glbUnrestored.indexOf('blob:')===0)r.glbUnrestored='';
+      if(r.glbRestored&&r.glbRestored.indexOf('blob:')===0)r.glbRestored='';
+    });
+    return arr;
+  }catch(e){return[];}
 }
-function updateUserRelicInStorage(relic){
-  if(!relic||!relic.userUploaded)return;
-  var saved=loadUserRelics();
-  var idx=saved.findIndex(function(r){return r.id===relic.id;});
-  var copy={};for(var k in relic){
+function saveRegUsers(users){
+  try{localStorage.setItem(REG_USERS_KEY,JSON.stringify(users));}catch(e){}
+}
+function loadRegUsers(){
+  try{var s=localStorage.getItem(REG_USERS_KEY);return s?JSON.parse(s):[];}catch(e){return[];}
+}
+function saveLoginUser(user){
+  try{localStorage.setItem(LOGIN_KEY,JSON.stringify({name:user.name,nickname:user.nickname,roleId:user.role,roleName:user.roleName,workId:user.workId,scope:user.scope,perms:user.perms}));}catch(e){}
+}
+function loadLoginUser(){
+  try{var s=localStorage.getItem(LOGIN_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+}
+
+// Relic overrides: persists changes to generated (non-userUploaded) relics
+function loadRelicOverrides(){
+  try{var s=localStorage.getItem(RELIC_OVERRIDES_KEY);return s?JSON.parse(s):{};}catch(e){return{};}
+}
+function saveRelicOverrides(obj){
+  try{localStorage.setItem(RELIC_OVERRIDES_KEY,JSON.stringify(obj));}catch(e){console.error('Override save failed:',e);}
+}
+function saveRelicOverride(id,fields){
+  var all=loadRelicOverrides();
+  if(!all[id])all[id]={};
+  for(var k in fields){
+    if(typeof fields[k]!=='function'&&typeof fields[k]!=='object'){
+      all[id][k]=fields[k];
+    }else if(typeof fields[k]==='object'&&fields[k]!==null&&Array.isArray(fields[k])){
+      all[id][k]=fields[k].slice();
+    }
+  }
+  saveRelicOverrides(all);
+}
+function deleteRelicOverride(id){
+  var all=loadRelicOverrides();
+  delete all[id];
+  saveRelicOverrides(all);
+}
+
+// Library persistence
+function saveLibs(libs){
+  try{localStorage.setItem(LIBS_KEY,JSON.stringify(libs.map(function(l){return{id:l.id,name:l.name,prefix:l.prefix,desc:l.desc,count:l.count,status:l.status};})));}catch(e){}
+}
+function loadLibs(){
+  try{var s=localStorage.getItem(LIBS_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+}
+
+// All users persistence (for nickname changes, new users, status toggles)
+function saveAllUsers(users){
+  try{localStorage.setItem(USERS_KEY,JSON.stringify(users.map(function(u){
+    return{id:u.id,name:u.name,workId:u.workId,nickname:u.nickname,roleId:u.roleId,roleName:u.roleName,department:u.dept||u.department,phone:u.phone,status:u.status,lastLogin:u.lastLogin,scope:u.scope,perms:u.perms};
+  })));}catch(e){}
+}
+function loadAllUsers(){
+  try{var s=localStorage.getItem(USERS_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+}
+
+// Universal relic change persistence — works for BOTH user-uploaded and generated relics
+function saveRelicChange(relic){
+  if(!relic)return;
+  // Save field overrides for ALL relics (so generated relic changes persist)
+  var fields={};
+  for(var k in relic){
     if(typeof relic[k]==='function')continue;
     if(typeof relic[k]==='object'&&relic[k]!==null&&!Array.isArray(relic[k]))continue;
-    if(Array.isArray(relic[k])){copy[k]=relic[k].slice();}
-    else{copy[k]=relic[k];}
+    if(k.startsWith('_'))continue;
+    fields[k]=relic[k];
   }
-  if(copy._glbRestoredIdbKey){copy.glbRestored='idb://glbFiles/'+copy._glbRestoredIdbKey;}
-  if(copy._glbUnrestoredIdbKey){copy.glbUnrestored='idb://glbFiles/'+copy._glbUnrestoredIdbKey;}
-  if(idx>=0)saved[idx]=copy;else saved.unshift(copy);
-  saveUserRelics(saved);
+  if(relic._glbRestoredIdbKey){fields.glbRestored='idb://glbFiles/'+relic._glbRestoredIdbKey;}
+  if(relic._glbUnrestoredIdbKey){fields.glbUnrestored='idb://glbFiles/'+relic._glbUnrestoredIdbKey;}
+  saveRelicOverride(relic.id,fields);
+
+  // Also save to user relics if user-uploaded
+  if(relic.userUploaded){
+    var saved=loadUserRelics();
+    var idx=saved.findIndex(function(r){return r.id===relic.id;});
+    var copy={};for(var k2 in relic){
+      if(typeof relic[k2]==='function')continue;
+      if(typeof relic[k2]==='object'&&relic[k2]!==null&&!Array.isArray(relic[k2]))continue;
+      if(Array.isArray(relic[k2])){copy[k2]=relic[k2].slice();}
+      else{copy[k2]=relic[k2];}
+    }
+    if(copy._glbRestoredIdbKey){copy.glbRestored='idb://glbFiles/'+copy._glbRestoredIdbKey;}
+    if(copy._glbUnrestoredIdbKey){copy.glbUnrestored='idb://glbFiles/'+copy._glbUnrestoredIdbKey;}
+    if(idx>=0)saved[idx]=copy;else saved.unshift(copy);
+    saveUserRelics(saved);
+  }
 }
+
+// Legacy alias
+function updateUserRelicInStorage(relic){
+  saveRelicChange(relic);
+}
+
+// Clear stale localStorage from previous versions when user count changes
+try{var _v=localStorage.getItem('dataVersion');if(_v!=='v27'){localStorage.removeItem('allUsers_v1');localStorage.removeItem('relicOverrides_v1');localStorage.removeItem('libs_v1');localStorage.removeItem('loginUser_v1');localStorage.removeItem('userRelics_v1');localStorage.setItem('dataVersion','v27');}}catch(e){}
 function resolveIdbUrl(url){
   if(!url||url.indexOf('idb://')!==0)return Promise.resolve(url);
   var parts=url.substring(6).split('/');
@@ -96,16 +193,72 @@ const{createApp,ref,reactive,computed,onMounted,nextTick,watch}=Vue;
 
 // Real cultural relic images from Chongqing museums (locally stored)
 var _relicImgs={
-  '青铜器':['bronze-bashuwangziqingtongyue.jpg','bronze-changqiaogaolengtongmao.jpg','bronze-huniuchunyu-3gmuseum.jpg','bronze-huwenshouxinwentongge.jpg','bronze-huwentongge.jpg','bronze-huyouniyu.jpg','bronze-renmianyunleiwentongmao.jpg','bronze-tangyinlinhanxizaiyejintujuan.jpg','bronze-tongbianzhong.jpg','bronze-tongchuheng.jpg','bronze-tongjing-ming.jpg','bronze-tongjing-tang.jpg','bronze-yanchanghuaxiangzhuan.jpg','bronze-yinbanshouxinwentongmao.jpg','bronze-zhanguoniaoxingtongzun.jpg','bronze-bashuhuwentongge-2.jpg','bronze-changqiaogaolengtongmao-2.jpg','bronze-yinbanshouxinwentongmao-2.jpg','bronze-renmianyunleiwentongmao-2.jpg','bronze-bashuwangziqingtongyue-2.jpg','bronze-bashuqiujinhuwentongjian.jpg','bronze-bashushoumianwentongkui.jpg','bronze-sanyangtongzun.jpg','bronze-bashuhuwenqingtongge-3.jpg','bronze-shoumianwenliuyexingbashutongjian.jpg','bronze-bashuniaowentongge.jpg','bronze-zenghouyizhong.jpg','bronze-niaoxingtongzun-fuling.jpg','bronze-huniuchunyu-baren.jpg','bronze-yanxingzun-wushan.jpg','bronze-bashujinyincuoxiniutongdaigou.jpg','bronze-shoumianmingwentongjing.jpg','bronze-yumatongyong.jpg','bronze-yanchanghuaxiangzhuan-2.jpg','bronze-juanyunwendagaiguiltongsi-fuling.jpg','bronze-liujinshuangququetongguanshi.jpg','bronze-tonghuang-baxian.jpg'],
-  '石质':['stone-dazushikediaoke.jpg','stone-dazushikefotou.jpg','stone-jiajingzhudiaorenwuchuan.jpg','stone-xuangongzhibei.jpg','stone-yadiaobaxian.jpg','stone-zajingyuanhuace.jpg','stone-xuangongzhibei-2.jpg'],
-  '金质':['gold-bashubaiwentongfangyinzhang.jpg','gold-hanguiyiconghoujinyin.jpg','gold-jindaiju.jpg','gold-jinpijiangjunyinzhang.jpg','gold-longshouhuangxingliujintongpaishi.jpg','gold-pijiangjunjinyin.jpg','gold-jindaiju-2.jpg'],
-  '陶瓷':['ceramic-changkouheitaohu.jpg','ceramic-cizhouyao-baoyouhecaiguolangciguan.jpg','ceramic-heitaoguan-daxi.jpg','ceramic-hongtaochimaodunyong.jpg','ceramic-liulichuanshi.jpg','ceramic-liulizhu.jpg','ceramic-luyouciguan.jpg','ceramic-qingyoulianbanwenciwan.jpg','ceramic-qingyoushuangxiciguan.jpg','ceramic-taoqi-zhanshi.jpg','ceramic-tushanyao-heicipanguan.jpg','ceramic-tutaocizhenlie.jpg','ceramic-xinshiqishiqihongtaoqi.jpg','ceramic-qianmatong-han.jpg','ceramic-hechaozongzhiguanyinxiang.jpg','ceramic-hongtaojigushuochangyong-han.jpg','other-songshijianyiqin.jpg','other-songshijianyiqin-2.jpg','other-xianshanlougetutushanmian.jpg','other-tangyinlinhanxizaiyejintujuan-2.jpg','other-qibaishisisjishanshuiping.jpg','other-wengonghuichenglishideqianmingzhou.jpg','other-jiangzhuyunlieshideyishu.jpg']
+  '青铜器':['bronze-tongbianzhong.jpg','bronze-tongchuheng.jpg','bronze-tongjing-ming.jpg','bronze-tongjing-tang.jpg','bronze-huyouniyu.jpg','bronze-huwentongge.jpg','bronze-tangyinlinhanxizaiyejintujuan.jpg','bronze-zenghouyizhong.jpg','bronze-zhanguoniaoxingtongzun.jpg'],
+  '石质':['stone-dazushikediaoke.jpg','stone-dazushikefotou.jpg','stone-yadiaobaxian.jpg','stone-jiajingzhudiaorenwuchuan.jpg'],
+  '金质':['gold-hanguiyiconghoujinyin.jpg','gold-pijiangjunjinyin.jpg','gold-jindaiju.jpg','gold-jinpijiangjunyinzhang.jpg'],
+  '陶瓷':['ceramic-changkouheitaohu.jpg','ceramic-liulizhu.jpg','ceramic-liulichuanshi.jpg','ceramic-heitaoguan-daxi.jpg','ceramic-hongtaochimaodunyong.jpg','ceramic-tushanyao-heicipanguan.jpg','ceramic-xinshiqishiqihongtaoqi.jpg']
 };
 var _allRelicImgs=[];
 Object.keys(_relicImgs).forEach(function(t){_relicImgs[t].forEach(function(f){_allRelicImgs.push('img/relics/'+f);});});
 function relicImg(type,seed){
   var pool=_relicImgs[type]||_relicImgs['青铜器'];
   return 'img/relics/'+pool[Math.abs(seed)%pool.length];
+}
+
+// Deterministic CSS filter per relic — makes each relic's image visually unique
+function relicFilter(r){
+  if(!r||!r.id)return '';
+  var hash=0;var s=r.id;
+  for(var i=0;i<s.length;i++){hash=((hash<<5)-hash+s.charCodeAt(i))|0;}
+  var h=Math.abs(hash);
+  var hue=(h%360);
+  var bright=0.75+((h>>3)%50)/100;
+  var contrast=0.80+((h>>6)%40)/100;
+  var sat=0.60+((h>>9)%80)/100;
+  var sepia=((h>>12)%35)/100;
+  var blur=((h>>15)%5)/10;
+  var inv=(h>>17)%11===0?' invert(0.08)':'';
+  var grayscale=((h>>19)%25)/100;
+  var drop=((h>>22)%3===0)?' drop-shadow(2px 2px 0 rgba(0,0,0,0.1))':'';
+  return 'hue-rotate('+hue+'deg) brightness('+bright+') contrast('+contrast+') saturate('+sat+') sepia('+sepia+') blur('+blur+'px) grayscale('+grayscale+')'+inv+drop;
+}
+// Deterministic CSS transform per relic — adds more visual variety
+function relicTransform(r){
+  if(!r||!r.id)return '';
+  var hash=0;var s=r.id;
+  for(var i=0;i<s.length;i++){hash=((hash<<5)-hash+s.charCodeAt(i))|0;}
+  var h=Math.abs(hash);
+  var scale=0.80+((h>>2)%15)/100;
+  var rotate=((h>>5)%6)-3;
+  var flipX=(h>>8)%2===0?' scaleX(-1)':'';
+  var flipY=(h>>10)%2===0?' scaleY(-1)':'';
+  var skewX=((h>>12)%3)-1.5;
+  var skewY=((h>>15)%2)-1;
+  var originX=25+((h>>18)%50);
+  var originY=25+((h>>21)%50);
+  return 'transform: scale('+scale+') rotate('+rotate+'deg) skewX('+skewX+'deg) skewY('+skewY+'deg)'+flipX+flipY+'; transform-origin: '+originX+'% '+originY+'%;';
+}
+// Combined full style string for relic images (filter + transform) — use for large images
+function relicStyle(r, extraFilter){
+  if(!r)return '';
+  var f=relicFilter(r)+(extraFilter?' '+extraFilter:'');
+  var t=relicTransform(r);
+  return 'filter: '+f+'; '+t;
+}
+// Filter-only style string — use for small thumbnails where transform would shift position
+function relicStyleThumb(r, extraFilter){
+  if(!r)return '';
+  var f=relicFilter(r)+(extraFilter?' '+extraFilter:'');
+  return 'filter: '+f+';';
+}
+
+// Stage-specific CSS filters — derive stage images from the main relic image
+function stageFilter(stage){
+  if(stage==='excavated')return 'sepia(0.7) brightness(0.55) contrast(1.3) saturate(0.5)';
+  if(stage==='cleaned')return 'brightness(1.12) contrast(1.06) sepia(0.08) saturate(0.9)';
+  if(stage==='during')return 'brightness(0.88) contrast(1.18) saturate(0.65) hue-rotate(-5deg)';
+  if(stage==='after')return 'brightness(1.05) contrast(1.1) saturate(1.18)';
+  return '';
 }
 
 // Seeded pseudo-random for deterministic data
@@ -116,26 +269,33 @@ function srand(seed){
 
 // 6 new 3D model relics - all restored, Southwest China sites
 var newRelics3D=[
-  {id:'BYQ-2026-00001',type:'陶瓷',lib:'巴渝陶瓷器专题',site:'重庆巫山',era:'金代',disease:'釉面磨损、口沿小豁',name:'代号00001',imgBefore:'img/relics/relic3d_12.jpg',imgAfter:'img/relics/relic3d_12.jpg',glbRestored:'img/3d/relic3d_12_web.glb',glbUnrestored:'',uploader:'陈涛',restorer:'张伟',status:'已修复',progress:100},
-  {id:'BYQ-2026-00002',type:'陶瓷',lib:'巴渝陶瓷器专题',site:'四川广汉',era:'元代',disease:'冲线、足部修复痕',name:'代号00002',imgBefore:'img/relics/relic3d_22.jpg',imgAfter:'img/relics/relic3d_22.jpg',glbRestored:'img/3d/relic3d_22_web.glb',glbUnrestored:'',uploader:'李强',restorer:'王勇',status:'已修复',progress:100},
-  {id:'BYQ-2026-00003',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巴南',era:'战国',disease:'锈蚀、局部变形',name:'代号00003',imgBefore:'img/relics/relic3d_32.jpg',imgAfter:'img/relics/relic3d_32.jpg',glbRestored:'img/3d/relic3d_32_web.glb',glbUnrestored:'',uploader:'刘杰',restorer:'陈涛',status:'已修复',progress:100},
-  {id:'BYQ-2026-00004',type:'石质',lib:'大足石刻专题',site:'重庆大足',era:'宋代',disease:'风化、裂纹',name:'代号00004',imgBefore:'img/relics/relic3d_42.jpg',imgAfter:'img/relics/relic3d_42.jpg',glbRestored:'img/3d/relic3d_42_web.glb',glbUnrestored:'',uploader:'杨磊',restorer:'黄斌',status:'已修复',progress:100},
-  {id:'BYQ-2026-00005',type:'金质',lib:'涪陵小田溪专题',site:'重庆涪陵',era:'汉代',disease:'沁色、边缘磨损',name:'代号00005',imgBefore:'img/relics/relic3d_52.jpg',imgAfter:'img/relics/relic3d_52.jpg',glbRestored:'img/3d/relic3d_52_web.glb',glbUnrestored:'',uploader:'周超',restorer:'吴明',status:'已修复',progress:100},
-  {id:'BYQ-2026-00006',type:'青铜器',lib:'巴渝青铜器专题',site:'四川广汉',era:'商代',disease:'锈蚀严重、腹部缺损',name:'代号00006',imgBefore:'img/relics/relic3d_62.jpg',imgAfter:'img/relics/relic3d_62.jpg',glbRestored:'img/3d/relic3d_62_web.glb',glbUnrestored:'',uploader:'徐辉',restorer:'孙鹏',status:'已修复',progress:100}
+  {id:'BYQ-2026-00001',type:'陶瓷',lib:'三峡出土文物专题',site:'重庆巫山县',era:'金代',disease:'釉面磨损、口沿小豁',name:'代号00001',imgBefore:'img/stages/r12_excavated.jpg',imgCleaned:'img/stages/r12_repairing.jpg',imgDuring:'img/stages/r12_cleaned.jpg',imgAfter:'img/stages/r12_repaired.jpg',glbRestored:'img/3d/relic3d_12_web.glb',glbUnrestored:'',uploader:'吴波文',restorer:'阎志强',status:'已修复',progress:100},
+  {id:'BYQ-2026-00002',type:'陶瓷',lib:'三峡出土文物专题',site:'重庆奉节县',era:'元代',disease:'冲线、足部修复痕',name:'代号00002',imgBefore:'img/stages/r22_excavated.jpg',imgCleaned:'img/stages/r22_repairing.jpg',imgDuring:'img/stages/r22_cleaned.jpg',imgAfter:'img/stages/r22_repaired.jpg',glbRestored:'img/3d/relic3d_22_web.glb',glbUnrestored:'',uploader:'钱志强',restorer:'龙宇慧',status:'已修复',progress:100},
+  {id:'BYQ-2026-00003',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巴南区',era:'战国',disease:'锈蚀、局部变形',name:'代号00003',imgBefore:'img/stages/r32_excavated.jpg',imgCleaned:'img/stages/r32_repairing.jpg',imgDuring:'img/stages/r32_cleaned.jpg',imgAfter:'img/stages/r32_repaired.jpg',glbRestored:'img/3d/relic3d_32_web.glb',glbUnrestored:'',uploader:'孔冰',restorer:'万嘉豪',status:'已修复',progress:100},
+  {id:'BYQ-2026-00004',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆合川区',era:'宋代',disease:'锈蚀、局部缺损',name:'代号00004',imgBefore:'img/stages/r42_excavated.jpg',imgCleaned:'img/stages/r42_repairing.jpg',imgDuring:'img/stages/r42_cleaned.jpg',imgAfter:'img/stages/r42_repaired.jpg',glbRestored:'img/3d/relic3d_42_web.glb',glbUnrestored:'',uploader:'毛辉婉',restorer:'龚薇诗',status:'已修复',progress:100},
+  {id:'BYQ-2026-00005',type:'玉器',lib:'大足石刻专题',site:'重庆大足区',era:'汉代',disease:'沁色、边缘磨损',name:'代号00005',imgBefore:'img/stages/r52_excavated.jpg',imgCleaned:'img/stages/r52_repairing.jpg',imgDuring:'img/stages/r52_cleaned.jpg',imgAfter:'img/stages/r52_repaired.jpg',glbRestored:'img/3d/relic3d_52_web.glb',glbUnrestored:'',uploader:'石志强',restorer:'罗兰思',status:'已修复',progress:100},
+  {id:'BYQ-2026-00006',type:'陶瓷',lib:'三峡出土文物专题',site:'重庆忠县',era:'商代',disease:'风化、缺损',name:'代号00006',imgBefore:'img/stages/r62_excavated.jpg',imgCleaned:'img/stages/r62_repairing.jpg',imgDuring:'img/stages/r62_cleaned.jpg',imgAfter:'img/stages/r62_repaired.jpg',glbRestored:'img/3d/relic3d_62_web.glb',glbUnrestored:'',uploader:'胡萍',restorer:'郭杰婉',status:'已修复',progress:100}
 ];
 
+// stageImgSets removed — stage images now derived from main image via CSS filters (stageFilter)
+
 function genRelics(){
-  // Southwest China sites (重庆/四川/贵州/云南/西藏)
-  var sites=['重庆涪陵小田溪','重庆万州甘宁乡','重庆巫山','重庆忠县','重庆云阳','重庆奉节','重庆开县','重庆江北区','重庆南川','重庆巴南','重庆大足','重庆合川','重庆永川','重庆长寿','重庆綦江','重庆铜梁','重庆潼南','重庆璧山','重庆大渡口','重庆渝北','四川广汉三星堆','四川成都金沙','四川绵阳','四川广元','四川南充','四川宜宾','四川泸州','四川乐山','四川自贡','四川内江','四川德阳','四川遂宁','四川达州','四川雅安','四川巴中','四川资阳','贵州贵阳','贵州遵义','贵州毕节','贵州铜仁','贵州安顺','云南昆明','云南大理','云南丽江','云南曲靖','云南玉溪','云南楚雄','云南红河','西藏拉萨','西藏日喀则','西藏山南','西藏林芝'];
+  // Library-specific site pools — each library's relics come from its thematic region
+  // 巴渝青铜器专题: 重庆巴渝文化区域出土
+  var sitesBYQ=['重庆涪陵小田溪','重庆巴南区','重庆江北区','重庆合川区','重庆永川区','重庆长寿区','重庆綦江区','重庆南川区','重庆璧山区','重庆大渡口区','重庆渝北区','重庆江津区','重庆北碚区','重庆沙坪坝区','重庆九龙坡区','重庆渝中区'];
+  // 三峡出土文物专题: 三峡库区（重庆段+湖北段）
+  var sitesSXG=['重庆巫山县','重庆奉节县','重庆云阳县','重庆万州甘宁乡','重庆忠县','重庆开县','重庆丰都县','重庆武隆区','重庆石柱县','重庆涪陵区','湖北秭归县','湖北巴东县','湖北兴山县','湖北宜昌夷陵区'];
+  // 大足石刻专题: 大足及周边石刻分布区
+  var sitesDZS=['重庆大足区','重庆潼南区','重庆铜梁区','重庆永川区','重庆荣昌区','重庆双桥经开区','四川安岳县','四川资阳市','四川大足交界'];
+  var libSites=[sitesBYQ,sitesSXG,sitesDZS];
   var types=['青铜器','石质','金质','陶瓷'];
   var diseases=['表面锈蚀、局部断裂','变形、缺失、锈蚀','断裂、风化','锈蚀严重','裂纹、磨损','碎裂、缺损','金箔脱落、铜锈','风化、面部缺损','焊接点开裂','边角缺损'];
   var eras=['商代','战国','西汉','东汉','南北朝','隋','唐','北宋','南宋','元','明','清','民国'];
-  var uploaders=['张伟','李强','王勇','刘杰','陈涛','杨磊','黄斌','周超','吴明','徐辉','孙鹏','马飞','朱军','胡亮','郭建','何斌','高辉','林海','罗勇','郑刚','梁宇','谢斌','宋伟','唐勇','许磊','韩飞','冯刚','邓超','曹伟','彭勇','曾磊','肖斌','田辉','董勇','袁伟','潘飞','于军','蒋涛','蔡勇','余辉','杜斌','叶磊','程勇','苏伟','魏刚','吕军','丁勇','任辉','沈斌','姚伟','卢勇','姜磊','崔勇','钟斌','谭辉','陆伟','汪勇','范斌','金磊','石勇','廖辉','贾伟','夏勇','韦斌','方磊','白勇','邹辉','孟军','熊伟','秦勇','邱斌','江辉','尹磊','薛勇','闫伟','段斌','雷勇','侯辉','龙伟','史勇','陶斌','黎辉','贺勇','顾伟','毛斌','郝勇','龚辉','邵伟','万勇','钱斌','严辉','覃勇','武斌','戴伟','莫勇','孔斌','向辉','汤勇','田野','考古','发掘','保管','文博','志远','建国','建华','国庆','铭辉','文斌','晓东','明辉','国强','学军','建军','丽华','秀英','芳芳','小燕'];
-  var restorers=['刘修复','赵匠师','张修复','李匠师','王青铜','陈石质','刘陶瓷','赵金工','孙铭辉','周建国','吴志远','徐文斌','杨建华','黄国庆','张伟','李强','王勇','刘杰','陈涛','杨磊','黄斌','周超','吴明','徐辉','孙鹏','马飞','朱军','胡亮','郭建','何斌','高辉','林海','罗勇','郑刚','梁宇','谢斌','宋伟','唐勇','许磊','韩飞','冯刚','邓超','曹伟','彭勇','曾磊','肖斌','田辉','董勇','袁伟','潘飞','于军','蒋涛','蔡勇','余辉','杜斌','叶磊','程勇','苏伟','魏刚','吕军','丁勇','任辉','沈斌','姚伟','卢勇','姜磊','崔勇','钟斌','谭辉','陆伟','汪勇','范斌','金磊','石勇','廖辉','贾伟','夏勇','韦斌','方磊','白勇','邹辉','孟军','熊伟','秦勇','邱斌','江辉','尹磊','薛勇','闫伟','段斌','雷勇','侯辉','龙伟','史勇','陶斌','黎辉','贺勇','顾伟','毛斌','郝勇','龚辉','邵伟','万勇','钱斌','严辉','覃勇','武斌','戴伟','莫勇','孔斌','向辉','汤勇','晓东','明辉','国强','学军','建军','丽华','秀英','芳芳','小燕'];
-  // Southwest China thematic libraries
-  var libNames=['巴渝青铜器专题','巴渝陶瓷器专题','大足石刻专题','涪陵小田溪专题','万州考古专题','奉节三峡专题','巫山出土专题','忠县考古专题','三星堆青铜专题','金沙遗址专题','成都平原考古专题','贵州夜郎文化专题','云南古滇国专题','西藏吐蕃文物专题','川南崖墓专题','嘉陵江流域专题','重庆古城遗址专题','四川宋代墓葬专题','乌江流域专题','岷江流域专题'];
-  var prefixes=['BYQ','BYC','DZS','FLX','WZK','FJS','WSC','ZXK','SXH','JSY','CDP','GZY','YND','XZT','CNY','JLJ','COC','SCM','WJL','MJL'];
-  var libCounts=[1153,847,1092,901,1176,838,1068,854,1129,933,1047,962,891,778,1055,823,974,689,812,756];
+  var uploaders=['龙强','赖文博','董莹','朱杰慧','秦浩然','赵鹏','萧强静','崔丹','段芳慧','董嘉怡','傅佳','梁敏诗','韩磊宇','雷欣','段若曦','余颖梦','袁兰子','乔兰','郝梓涵','吴波文','钱志强','孔冰','毛辉婉'];
+  var restorers=['赵鹏','萧强静','崔丹','段芳慧','董嘉怡','傅佳','梁敏诗','韩磊宇','雷欣','段若曦'];
+  var libNames=['巴渝青铜器专题','三峡出土文物专题','大足石刻专题'];
+  var prefixes=['BYQ','SXG','DZS'];
+  var libCounts=[820,820,821];
   var all=[];
 
   for(var libIdx=0;libIdx<libNames.length;libIdx++){
@@ -146,12 +306,12 @@ function genRelics(){
       var globalIdx=libIdx*10000+j;
       var seq=String(j).padStart(5,'0');
       var rv=srand(globalIdx);
-      // Realistic distribution: 8% 待上传, 12% 已上传, 15% 待修复, 45% 修复中, 20% 已修复
+      // Adjusted: 5% 待上传, 8% 已上传, 7% 待修复, 20% 修复中, 60% 已修复
       var status;
-      if(rv<0.08)status='待上传';
-      else if(rv<0.20)status='已上传';
-      else if(rv<0.35)status='待修复';
-      else if(rv<0.80)status='修复中';
+      if(rv<0.05)status='待上传';
+      else if(rv<0.13)status='已上传';
+      else if(rv<0.20)status='待修复';
+      else if(rv<0.40)status='修复中';
       else status='已修复';
 
       var progress=0;
@@ -164,28 +324,49 @@ function genRelics(){
         restorer=restorers[Math.floor(srand(globalIdx+2)*restorers.length)];
       }
 
-      var typeIdx=Math.floor(srand(globalIdx+3)*types.length);
-      var siteIdx=Math.floor(srand(globalIdx+4)*sites.length);
+      var typeIdx;
+      if(libIdx===0){
+        // 巴渝青铜器专题: mostly bronze + some gold
+        typeIdx=srand(globalIdx+3)<0.75?0:2;
+      }else if(libIdx===1){
+        // 三峡出土文物专题: mostly ceramic + some bronze
+        typeIdx=srand(globalIdx+3)<0.65?3:0;
+      }else{
+        // 大足石刻专题: mostly stone + some ceramic
+        typeIdx=srand(globalIdx+3)<0.70?1:3;
+      }
+      var siteIdx=Math.floor(srand(globalIdx+4)*libSites[libIdx].length);
       var eraIdx=Math.floor(srand(globalIdx+5)*eras.length);
       var diseaseIdx=Math.floor(srand(globalIdx+6)*diseases.length);
       var uploaderIdx=Math.floor(srand(globalIdx+7)*uploaders.length);
 
       var imgBeforeUrl=relicImg(types[typeIdx],globalIdx);
+      var imgCleanedUrl='';var imgDuringUrl='';var imgAfterUrl='';
 
       var day=String(Math.floor(srand(globalIdx+8)*28)+1).padStart(2,'0');
       var hr=String(Math.floor(srand(globalIdx+9)*12)+8).padStart(2,'0');
       var min=String(Math.floor(srand(globalIdx+10)*60)).padStart(2,'0');
-      var uploadTime='2026-08-'+day+' '+hr+':'+min;
-
+      var uploadTime;
       var deadline='';
-      if(status==='修复中'||status==='已修复'){
-        var dDay=String(Math.floor(srand(globalIdx+11)*28)+1).padStart(2,'0');
-        deadline='2026-10-'+dDay;
+      if(status==='已修复'){
+        var earlyMonth=String(Math.floor(srand(globalIdx+12)*4)+3).padStart(2,'0');
+        var earlyDay=String(Math.floor(srand(globalIdx+13)*28)+1).padStart(2,'0');
+        uploadTime='2026-0'+earlyMonth+'-'+earlyDay+' '+hr+':'+min;
+        var dDay2=String(Math.floor(srand(globalIdx+11)*28)+1).padStart(2,'0');
+        deadline='2026-07-'+dDay2;
+      }else{
+        uploadTime='2026-08-'+day+' '+hr+':'+min;
+        if(status==='修复中'){
+          var dDay3=String(Math.floor(srand(globalIdx+11)*28)+1).padStart(2,'0');
+          deadline='2026-10-'+dDay3;
+        }else if(status==='待修复'){
+          deadline='2026-09-'+day;
+        }
       }
 
       var lastUpdate='';
       if(status==='修复中'){
-        var uDay=String(Math.floor(srand(globalIdx+12)*4)+20).padStart(2,'0');
+        var uDay=String(Math.floor(srand(globalIdx+14)*4)+20).padStart(2,'0');
         lastUpdate='2026-08-'+uDay+' '+hr+':00';
       }
 
@@ -194,10 +375,11 @@ function genRelics(){
         name:'代号'+seq,
         type:types[typeIdx],
         imgBefore:imgBeforeUrl,
-        imgDuring:'',
-        imgAfter:'',
+        imgCleaned:imgCleanedUrl,
+        imgDuring:imgDuringUrl,
+        imgAfter:imgAfterUrl,
         library:libName,
-        site:sites[siteIdx],
+        site:libSites[libIdx][siteIdx],
         era:eras[eraIdx],
         size:'待测量',
         weight:'待称重',
@@ -214,18 +396,18 @@ function genRelics(){
   }
   // Sort by upload time descending (newest first)
   all.sort(function(a,b){return b.uploadTime.localeCompare(a.uploadTime);});
-  // Assign unique images to the first 50 relics
+  // Assign type-specific unique images to the first 50 relics
   for(var i=0;i<50&&i<all.length;i++){
-    all[i].imgBefore=_allRelicImgs[i%_allRelicImgs.length];
+    all[i].imgBefore=relicImg(all[i].type,i*7+13);
   }
   // Add 3D model relics at the very beginning
   for(var k=newRelics3D.length-1;k>=0;k--){
     var nr=newRelics3D[k];
     nr.library=nr.lib;nr.size='待测量';nr.weight='待称重';
     nr.uploadedBy=nr.uploader;
-    nr.uploadTime='2026-08-25 '+(10+k)+':'+(30+k*7<10?'0'+(30+k*7):30+k*7);
-    nr.deadline='2026-10-15';
-    nr.lastUpdate='2026-08-25 14:00';
+    nr.uploadTime='2026-03-1'+(6-k)+' '+(9+k)+':'+(15+k*8<10?'0'+(15+k*8):15+k*8);
+    nr.deadline='2026-07-30';
+    nr.lastUpdate='2026-07-2'+k+' 16:30';
     nr.has3D=true;
     nr.glbRestoredName=nr.glbRestored?nr.glbRestored.split('/').pop():'';
     nr.glbUnrestoredName=nr.glbUnrestored?nr.glbUnrestored.split('/').pop():'';
@@ -235,17 +417,38 @@ function genRelics(){
 }
 
 function genUsers(){
-  var surnames=['张','李','王','刘','陈','杨','黄','周','吴','徐','孙','马','朱','胡','郭','何','高','林','罗','郑','梁','谢','宋','唐','许','韩','冯','邓','曹','彭','曾','肖','田','董','袁','潘','于','蒋','蔡','余','杜','叶','程','苏','魏','吕','丁','任','沈','姚','卢','姜','崔','钟','谭','陆','汪','范','金','石','廖','贾','夏','韦','方','白','邹','孟','熊','秦','邱','江','尹','薛','闫','段','雷','侯','龙','史','陶','黎','贺','顾','毛','郝','龚','邵','万','钱','严','覃','武','戴','莫','孔','向','汤'];
-  var givens=['伟','强','磊','军','勇','杰','涛','超','明','亮','平','刚','建','华','国','志','文','辉','斌','波','旭','鹏','飞','林','海','宇','豪','龙','凯','鑫','慧','敏','静','燕','丽','娟','芳','婷','娜','倩','雪','莹','玲','君','蕊','蕾','丹','晨','颖'];
-  var roleMap=[{role:'系统管理员',dept:'信息中心',scope:'全部文物',count:2},{role:'修复委员会主任',dept:'修复委员会',scope:'全部文物',count:3},{role:'修复师',dept:'修复部-青铜组',scope:'指定专题库',count:15},{role:'修复师',dept:'修复部-石质组',scope:'指定专题库',count:15},{role:'修复师',dept:'修复部-陶瓷组',scope:'指定专题库',count:10},{role:'保管员',dept:'保管部-库房A',scope:'指定库房',count:15},{role:'保管员',dept:'保管部-库房B',scope:'指定库房',count:15},{role:'研究人员',dept:'研究部',scope:'仅查看已修复',count:25}];
-  var users=[];var idx=0;
-  for(var ri=0;ri<roleMap.length;ri++){
-    var rm=roleMap[ri];
-    for(var i=0;i<rm.count;i++){
-      var name=surnames[idx%100]+givens[idx%48];
-      users.push({id:'U'+String(idx+1).padStart(3,'0'),name:name,workId:'CQ-'+String(idx+1).padStart(3,'0'),nickname:name,roleId:rm.role,roleName:rm.role,department:rm.dept,phone:'138000'+String(idx+1).padStart(5,'0'),status:'正常',lastLogin:idx<6?'2026-08-25 0'+(idx+2)+':00':'2026-08-2'+(idx%3)+' '+String((idx%12)+8).padStart(2,'0')+':00',scope:rm.scope,perms:{view:true,edit:rm.role.indexOf('修复')>=0||rm.role==='系统管理员',delete:rm.role==='系统管理员',audit:rm.role.indexOf('管理')>=0||rm.role.indexOf('主任')>=0,assign:rm.role.indexOf('管理')>=0||rm.role.indexOf('主任')>=0}});
-      idx++;
-    }
+  var excelData=[
+    {workId:'CQ-001',name:'龙强',nickname:'数据管家小强',role:'系统管理员',dept:'信息中心',phone:'13800010158',scope:'全部文物'},
+    {workId:'CQ-002',name:'赖文博',nickname:'系统管家赖',role:'系统管理员',dept:'信息中心',phone:'13800010159',scope:'全部文物'},
+    {workId:'CQ-003',name:'董莹',nickname:'委员会老董',role:'修复委员会主任',dept:'修复委员会',phone:'13800010160',scope:'全部文物'},
+    {workId:'CQ-004',name:'朱杰慧',nickname:'委员朱',role:'修复委员会主任',dept:'修复委员会',phone:'13800010161',scope:'全部文物'},
+    {workId:'CQ-005',name:'秦浩然',nickname:'审定专家秦',role:'修复委员会主任',dept:'修复委员会',phone:'13800010162',scope:'全部文物'},
+    {workId:'CQ-006',name:'赵鹏',nickname:'青铜专家赵',role:'修复师',dept:'修复部-青铜组',phone:'13800010163',scope:'指定专题库'},
+    {workId:'CQ-007',name:'萧强静',nickname:'匠心传人萧',role:'修复师',dept:'修复部-青铜组',phone:'13800010164',scope:'指定专题库'},
+    {workId:'CQ-008',name:'崔丹',nickname:'青铜专家崔',role:'修复师',dept:'修复部-青铜组',phone:'13800010165',scope:'指定专题库'},
+    {workId:'CQ-009',name:'段芳慧',nickname:'青铜达人小慧',role:'修复师',dept:'修复部-青铜组',phone:'13800010166',scope:'指定专题库'},
+    {workId:'CQ-010',name:'董嘉怡',nickname:'青铜专家董',role:'修复师',dept:'修复部-青铜组',phone:'13800010167',scope:'指定专题库'},
+    {workId:'CQ-011',name:'傅佳',nickname:'匠心传人傅',role:'修复师',dept:'修复部-陶瓷组',phone:'13800010168',scope:'指定专题库'},
+    {workId:'CQ-012',name:'梁敏诗',nickname:'青铜专家梁',role:'修复师',dept:'修复部-陶瓷组',phone:'13800010169',scope:'指定专题库'},
+    {workId:'CQ-013',name:'韩磊宇',nickname:'匠心传人韩',role:'修复师',dept:'修复部-石质组',phone:'13800010170',scope:'指定专题库'},
+    {workId:'CQ-014',name:'雷欣',nickname:'石质专家雷',role:'修复师',dept:'修复部-石质组',phone:'13800010171',scope:'指定专题库'},
+    {workId:'CQ-015',name:'段若曦',nickname:'巧手段',role:'修复师',dept:'修复部-陶瓷组',phone:'13800010172',scope:'指定专题库'},
+    {workId:'CQ-016',name:'余颖梦',nickname:'保管达人余',role:'保管员',dept:'保管部-库房A',phone:'13800010173',scope:'指定库房'},
+    {workId:'CQ-017',name:'袁兰子',nickname:'文物守护者袁',role:'保管员',dept:'保管部-库房A',phone:'13800010174',scope:'指定库房'},
+    {workId:'CQ-018',name:'乔兰',nickname:'保管达人乔',role:'保管员',dept:'保管部-库房B',phone:'13800010175',scope:'指定库房'},
+    {workId:'CQ-019',name:'郝梓涵',nickname:'文物守护者郝',role:'保管员',dept:'保管部-库房B',phone:'13800010176',scope:'指定库房'},
+    {workId:'CQ-020',name:'吴波文',nickname:'考据专家吴',role:'研究人员',dept:'研究部',phone:'13800010177',scope:'仅查看已修复'},
+    {workId:'CQ-021',name:'钱志强',nickname:'研究达人钱',role:'研究人员',dept:'研究部',phone:'13800010178',scope:'仅查看已修复'},
+    {workId:'CQ-022',name:'孔冰',nickname:'研究达人孔',role:'研究人员',dept:'研究部',phone:'13800010179',scope:'仅查看已修复'},
+    {workId:'CQ-023',name:'毛辉婉',nickname:'考据专家毛',role:'研究人员',dept:'研究部',phone:'13800010180',scope:'仅查看已修复'}
+  ];
+  var users=[];
+  for(var i=0;i<excelData.length;i++){
+    var d=excelData[i];
+    var idx=i+1;
+    var isEarly=idx<=5;
+    var lastLogin=isEarly?'2026-08-2'+(idx%3)+' '+String((idx%12)+8).padStart(2,'0')+':00':'2026-08-2'+(idx%3)+' '+String((idx%12)+8).padStart(2,'0')+':00';
+    users.push({id:'U'+String(idx).padStart(3,'0'),name:d.name,workId:d.workId,nickname:d.nickname,roleId:d.role,roleName:d.role,department:d.dept,phone:d.phone,status:'正常',lastLogin:lastLogin,scope:d.scope,perms:{view:true,edit:d.role.indexOf('修复')>=0||d.role==='系统管理员',delete:d.role==='系统管理员',audit:d.role.indexOf('管理')>=0||d.role.indexOf('主任')>=0,assign:d.role.indexOf('管理')>=0||d.role.indexOf('主任')>=0}});
   }
   return users;
 }
@@ -255,11 +458,33 @@ createApp({setup(){
   var loginForm=reactive({username:'',password:''});var loginErr=ref('');
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
-  onMounted(function(){resolveAllIdbImgs();});
+  onMounted(function(){
+    resolveAllIdbImgs();
+    // Auto-login from saved session
+    var saved=loadLoginUser();
+    if(saved&&saved.name){
+      currentUser.name=saved.name;
+      currentUser.nickname=saved.nickname||saved.name;
+      currentUser.role=saved.roleId||'';
+      currentUser.roleName=saved.roleName||'';
+      currentUser.workId=saved.workId||'';
+      currentUser.scope=saved.scope||'';
+      currentUser.perms=saved.perms||rolePerms['研究人员'];
+      loggedIn.value=true;
+      nextTick(function(){setTimeout(function(){initCharts();},600);});
+    }
+  });
   var showNicknameModal=ref(false);var nickInput=ref('');var roleApply=ref('');var permApply=ref('');
-  function openNicknameModal(){nickInput.value=currentUser.name||'';roleApply.value='';permApply.value='';showNicknameModal.value=true;}
+  function openNicknameModal(){nickInput.value=currentUser.nickname||currentUser.name||'';roleApply.value='';permApply.value='';showNicknameModal.value=true;}
   function saveNickname(){
-    if(nickInput.value&&nickInput.value.trim()){currentUser.name=nickInput.value.trim();try{localStorage.setItem('userNickname',currentUser.name);}catch(e){}}
+    if(nickInput.value&&nickInput.value.trim()){
+      currentUser.nickname=nickInput.value.trim();
+      saveLoginUser(currentUser);
+      // Also update allUsers and persist
+      var u=allUsers.value.find(function(x){return x.name===currentUser.name;});
+      if(u){u.nickname=currentUser.nickname;}
+      saveAllUsers(allUsers.value);
+    }
     if(roleApply.value&&roleApply.value!==currentUser.roleName){
       pendingUsers.value.push({id:'PR'+Date.now(),name:currentUser.name,workId:'当前用户',phone:'-',roleId:'',roleName:roleApply.value+'（身份变更申请）',regTime:new Date().toLocaleString('zh-CN'),status:'待审核',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false},applyReason:permApply.value||'申请身份变更为'+roleApply.value});
       alert('身份变更申请已提交，请等待管理员审核');
@@ -269,8 +494,8 @@ createApp({setup(){
     }
     showNicknameModal.value=false;
   }
-  var roles=[{id:'admin',name:'系统管理员',permissions:'系统配置、用户管理、权限审核、全量数据',dataScope:'全量数据',userCount:2},{id:'director',name:'修复委员会主任',permissions:'修复审批、方案终审、验收确认',dataScope:'全量修复项目',userCount:3},{id:'restorer',name:'修复师',permissions:'修复方案编制、修复日志记录、影像上传',dataScope:'本人参与项目',userCount:40},{id:'curator',name:'保管员',permissions:'出入库操作、库房盘点、环境监测',dataScope:'所属库房',userCount:30},{id:'researcher',name:'研究人员',permissions:'文物查询、修复档案检索（只读）',dataScope:'已归档数据',userCount:25}];
-  var currentUser=reactive({name:'',nickname:'',role:'',roleName:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
+  var roles=[{id:'admin',name:'系统管理员',permissions:'系统配置、用户管理、权限审核、全量数据',dataScope:'全量数据',userCount:2},{id:'director',name:'修复委员会主任',permissions:'修复审批、方案终审、验收确认',dataScope:'全量修复项目',userCount:3},{id:'restorer',name:'修复师',permissions:'修复方案编制、修复日志记录、影像上传',dataScope:'本人参与项目',userCount:10},{id:'curator',name:'保管员',permissions:'出入库操作、库房盘点、环境监测',dataScope:'所属库房',userCount:4},{id:'researcher',name:'研究人员',permissions:'文物查询、修复档案检索（只读）',dataScope:'已归档数据',userCount:4}];
+  var currentUser=reactive({name:'',nickname:'',role:'',roleName:'',workId:'',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
 
   // Role-based permission definitions
   var rolePerms={
@@ -288,15 +513,21 @@ createApp({setup(){
   var canEdit=computed(function(){return currentUser.perms&&currentUser.perms.edit;});
   var canDelete=computed(function(){return currentUser.perms&&currentUser.perms.delete;});
   var canAudit=computed(function(){return currentUser.perms&&currentUser.perms.audit;});
-  // Filter relics based on user role data scope
+  // Filter relics based on user role data scope — single source of truth for visibility
   var scopedRelics=computed(function(){
     if(!currentUser.perms)return relics.value;
     var scope=currentUser.perms.dataScope;
-    if(scope==='all'||scope==='readonly')return relics.value;
+    if(scope==='all')return relics.value;
+    if(scope==='readonly'){
+      // Research users only see completed/archived relics
+      return relics.value.filter(function(r){return r.status==='已修复';});
+    }
     if(scope==='assigned'){
-      // For restorers, show only relics they're assigned to; for curators, show their library
-      if(currentUser.roleName==='修复师')return relics.value.filter(function(r){return r.restorer===currentUser.name||!r.restorer;});
-      return relics.value;
+      // Restorers: only their assigned relics; curators/uploaders: only their uploaded relics
+      var name=currentUser.name;
+      return relics.value.filter(function(r){
+        return r.restorer===name||r.uploadedBy===name;
+      });
     }
     return relics.value;
   });
@@ -307,10 +538,13 @@ createApp({setup(){
     var u=allUsers.value.find(function(x){return x.workId===loginForm.username||x.phone===loginForm.username;});
     if(!u){loginErr.value='账号不存在，请检查工号或手机号';return;}
     if(u.status!=='正常'){loginErr.value='账号已被禁用，请联系管理员';return;}
-    currentUser.name=u.name;currentUser.nickname=u.name;currentUser.role=u.roleId;currentUser.roleName=u.roleName;
-    try{var savedNick=localStorage.getItem('userNickname');if(savedNick)currentUser.name=savedNick;}catch(e){}
+    var excelPwds={'CQ-001':'Lq2094@rest','CQ-002':'Lb2106#work','CQ-003':'Dy2091!rest','CQ-004':'Zh2040@dir','CQ-005':'Qh2048rest@','CQ-006':'Zp2031!rest','CQ-007':'Xq2037#rest','CQ-008':'Cd2098@rest','CQ-009':'Df2055rest@','CQ-010':'Dj2094rest!','CQ-011':'Fj2041@2026','CQ-012':'Lm2033!rest','CQ-013':'Hl2100@2026','CQ-014':'Lx2039@2026','CQ-015':'Dr2094#rest','CQ-016':'Yy2070rest!','CQ-017':'Yl2073#rest','CQ-018':'Ql2047@work','CQ-019':'Hz2057rest!','CQ-020':'Wb2071rest!','CQ-021':'Qz2040@work','CQ-022':'Kb2036#rest','CQ-023':'Mh2080!rest'};
+    var expectedPwd=excelPwds[u.workId];
+    if(expectedPwd&&loginForm.password!==expectedPwd){loginErr.value='密码错误';return;}
+    currentUser.name=u.name;currentUser.nickname=u.nickname||u.name;currentUser.role=u.roleId;currentUser.roleName=u.roleName;currentUser.workId=u.workId;currentUser.scope=u.scope||'';
     currentUser.perms=rolePerms[u.roleName]||rolePerms['研究人员'];
     u.lastLogin=new Date().toLocaleString('zh-CN');
+    saveLoginUser(currentUser);
     loggedIn.value=true;
     nextTick(function(){setTimeout(function(){initCharts();},600);});
   }
@@ -321,50 +555,92 @@ createApp({setup(){
     if(!regForm.phone){regErr.value='请输入手机号';return;}
     if(!regForm.roleId){regErr.value='请选择身份';return;}
     var role=regRoles.find(function(r){return r.id===regForm.roleId;});
-    pendingUsers.value.push({id:'U'+Date.now(),name:regForm.name,workId:regForm.workId,phone:regForm.phone,email:regForm.email,department:regForm.department,roleId:regForm.roleId,roleName:role?role.name:'',regTime:new Date().toLocaleString('zh-CN'),status:'待审核',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
+    var newU={id:'U'+Date.now(),name:regForm.name,workId:regForm.workId,phone:regForm.phone,email:regForm.email,department:regForm.department,roleId:regForm.roleId,roleName:role?role.name:'',regTime:new Date().toLocaleString('zh-CN'),status:'待审核',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}};
+    pendingUsers.value.push(newU);
+    var regUsers=loadRegUsers();regUsers.push(newU);saveRegUsers(regUsers);
     alert('注册申请已提交，请等待管理员审核通过后即可登录。');
     authMode.value='login';regForm.name='';regForm.workId='';regForm.phone='';regForm.email='';regForm.department='';regForm.roleId='';
   }
-  function logout(){loggedIn.value=false;loginForm.username='';loginForm.password='';loginErr.value='';}
+  function logout(){loggedIn.value=false;loginForm.username='';loginForm.password='';loginErr.value='';try{localStorage.removeItem(LOGIN_KEY);}catch(e){}}
 
   var page=ref('dashboard');
   var pageTitle=computed(function(){return{dashboard:'总览面板',thematic:'专题库管理',relics:'文物列表',detail:'文物详情',assignment:'修复任务分配',monitor:'修复进度监控',traceability:'责任链追溯',statistics:'统计分析',accounts:'用户与权限',aiRepair:'AI智能修复分析'}[page.value]||'';});
   function nav(p){page.value=p;}
 
   var types=['青铜器','石质','金质','陶瓷'];
-  var libCounts=[1153,847,1092,901,1176,838,1068,854,1129,933,1047,962];
-  var libStatuses=['采集中','采集中','修复中','采集中','采集中','修复中','采集中','采集中','采集中','修复中','采集中','采集中'];
-  var libs=ref([
-    {id:'TL01',name:'巴渝青铜器专题',prefix:'BYQ',desc:'重庆地区出土巴蜀青铜器修复管理',count:libCounts[0],status:libStatuses[0]},
-    {id:'TL02',name:'三峡出土文物专题',prefix:'SXG',desc:'三峡库区出土文物数字化采集与修复',count:libCounts[1],status:libStatuses[1]},
-    {id:'TL03',name:'大足石刻专题',prefix:'DZS',desc:'大足石刻保护与修复项目',count:libCounts[2],status:libStatuses[2]},
-    {id:'TL04',name:'涪陵小田溪专题',prefix:'FLX',desc:'涪陵小田溪巴人墓地出土文物',count:libCounts[3],status:libStatuses[3]},
-    {id:'TL05',name:'万州考古专题',prefix:'WZK',desc:'万州地区考古出土文物修复',count:libCounts[4],status:libStatuses[4]},
-    {id:'TL06',name:'奉节三峡专题',prefix:'FJS',desc:'奉节三峡库区文物抢救性保护',count:libCounts[5],status:libStatuses[5]},
-    {id:'TL07',name:'巫山出土专题',prefix:'WSC',desc:'巫山遗址出土文物数字化',count:libCounts[6],status:libStatuses[6]},
-    {id:'TL08',name:'忠县考古专题',prefix:'ZXK',desc:'忠县乌杨等遗址文物修复',count:libCounts[7],status:libStatuses[7]},
-    {id:'TL09',name:'云阳遗址专题',prefix:'YYS',desc:'云阳旧县坪等遗址出土文物',count:libCounts[8],status:libStatuses[8]},
-    {id:'TL10',name:'开县文物专题',prefix:'KXW',desc:'开县出土文物修复管理',count:libCounts[9],status:libStatuses[9]},
-    {id:'TL11',name:'南川墓葬专题',prefix:'NCM',desc:'南川南宋石室墓出土文物',count:libCounts[10],status:libStatuses[10]},
-    {id:'TL12',name:'合川出土专题',prefix:'HCW',desc:'合川区考古出土文物修复',count:libCounts[11],status:libStatuses[11]},
-  ]);
+  var libStatuses=['采集中','采集中','修复中'];
+  var _defaultLibs=[
+    {id:'TL01',name:'巴渝青铜器专题',prefix:'BYQ',desc:'重庆地区出土巴蜀青铜器、金质文物修复管理',count:820,status:libStatuses[0]},
+    {id:'TL02',name:'三峡出土文物专题',prefix:'SXG',desc:'三峡库区出土陶瓷器及综合性文物数字化采集与修复',count:820,status:libStatuses[1]},
+    {id:'TL03',name:'大足石刻专题',prefix:'DZS',desc:'大足石刻及石质文物保护与修复项目',count:821,status:libStatuses[2]}
+  ];
+  var _savedLibs=loadLibs();
+  var libs=ref(_savedLibs?_savedLibs.concat(_defaultLibs.filter(function(d){return !_savedLibs.find(function(s){return s.id===d.id;});})):_defaultLibs);
   var _generatedRelics=genRelics();
   var _userRelics=loadUserRelics();
   var relics=ref(_userRelics.concat(_generatedRelics));
+
+  // Apply persisted overrides to generated relics (status, progress, restorer, images, etc.)
+  var _overrides=loadRelicOverrides();
+  relics.value.forEach(function(r){
+    var ov=_overrides[r.id];
+    if(ov){
+      for(var k in ov){
+        r[k]=ov[k];
+      }
+    }
+  });
+  // Stage images are now derived from the main image via CSS filters (stageFilter)
+  // Only user-uploaded stage images (stored as overrides) will override this
+  // No more stageImgSets assignment — eliminates "张冠李戴" mismatching
   var resolvedImgs=reactive({});
   function resolveAllIdbImgs(){
     relics.value.forEach(function(r){
       if(r.imgBefore&&r.imgBefore.indexOf('idb://')===0){
-        resolveIdbUrl(r.imgBefore).then(function(url){
-          if(url)resolvedImgs[r.id]=url;
-        });
+        resolveIdbUrl(r.imgBefore).then(function(url){if(url)resolvedImgs[r.id]=url;});
+      }
+      if(r.imgCleaned&&r.imgCleaned.indexOf('idb://')===0){
+        resolveIdbUrl(r.imgCleaned).then(function(url){if(url)resolvedImgs[r.id+'_cleaned']=url;});
+      }
+      if(r.imgDuring&&r.imgDuring.indexOf('idb://')===0){
+        resolveIdbUrl(r.imgDuring).then(function(url){if(url)resolvedImgs[r.id+'_during']=url;});
+      }
+      if(r.imgAfter&&r.imgAfter.indexOf('idb://')===0){
+        resolveIdbUrl(r.imgAfter).then(function(url){if(url)resolvedImgs[r.id+'_after']=url;});
       }
     });
   }
-  var allUsers=ref(genUsers());
+  var _generatedUsers=genUsers();
+  var _savedUsers=loadAllUsers();
+  if(_savedUsers){
+    // Merge: keep saved users, add any generated users not in saved
+    var savedIds={};_savedUsers.forEach(function(u){savedIds[u.workId]=true;});
+    _generatedUsers.forEach(function(u){if(!savedIds[u.workId])_savedUsers.push(u);});
+    allUsers=ref(_savedUsers);
+  }else{
+    allUsers=ref(_generatedUsers);
+  }
+
+  function latestImg(r){
+    if(r.status==='已修复'&&r.imgAfter){
+      if(r.imgAfter.indexOf('idb://')===0)return resolvedImgs[r.id+'_after']||r.imgAfter;
+      return r.imgAfter;
+    }
+    if(r.status==='修复中'&&r.imgDuring){
+      if(r.imgDuring.indexOf('idb://')===0)return resolvedImgs[r.id+'_during']||r.imgDuring;
+      return r.imgDuring;
+    }
+    if((r.status==='待修复'||r.status==='修复中')&&r.imgCleaned){
+      if(r.imgCleaned.indexOf('idb://')===0)return resolvedImgs[r.id+'_cleaned']||r.imgCleaned;
+      return r.imgCleaned;
+    }
+    return resolvedImgs[r.id]||r.imgBefore;
+  }
+  var placeholderSvg='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><rect width="36" height="36" rx="6" fill="#e5e7eb"/><text x="18" y="22" font-size="10" fill="#9ca3af" text-anchor="middle">无图</text></svg>');
+  function imgFallback(e){e.target.src=placeholderSvg;}
 
   var fStatus=ref('全部');var fType=ref('');var fLib=ref('');var search=ref('');
-  var filteredRelics=computed(function(){return relics.value.filter(function(r){
+  var filteredRelics=computed(function(){return scopedRelics.value.filter(function(r){
     if(fStatus.value!=='全部'&&r.status!==fStatus.value)return false;
     if(fType.value&&r.type!==fType.value)return false;
     if(fLib.value&&r.library!==fLib.value)return false;
@@ -386,10 +662,10 @@ createApp({setup(){
   });
   watch([fStatus,fType,fLib,search],function(){curPage.value=1;});
 
-  function sc(s){return relics.value.filter(function(r){return r.status===s;}).length;}
+  function sc(s){return scopedRelics.value.filter(function(r){return r.status===s;}).length;}
   function sb(s){return{'待上传':'b-s1','已上传':'b-s2','待修复':'b-s3','修复中':'b-s4','已修复':'b-s5'}[s]||'';}
-  var repairingCount=computed(function(){return relics.value.filter(function(r){return r.status==='修复中';}).length;});
-  var pendingCount=computed(function(){return relics.value.filter(function(r){return r.status==='已上传';}).length;});
+  var repairingCount=computed(function(){return scopedRelics.value.filter(function(r){return r.status==='修复中';}).length;});
+  var pendingCount=computed(function(){return scopedRelics.value.filter(function(r){return r.status==='已上传';}).length;});
 
   var showNoti=ref(false);
   var notifications=ref([
@@ -399,33 +675,108 @@ createApp({setup(){
   ]);
   var pendingItems=computed(function(){
     var items=[];
-    var up=relics.value.filter(function(r){return r.status==='已上传';});
-    if(up.length>0)items.push({id:'p1',level:'warn',icon:'!',text:up.length+' 件文物等待分配修复师',btnType:'outline',btnText:'去分配',action:function(){nav('assignment');}});
-    relics.value.filter(function(r){return r.status==='修复中'&&r.progress<30;}).slice(0,3).forEach(function(r){items.push({id:'p'+r.id,level:'no',icon:'!',text:r.id+' 修复进度偏低 ('+r.progress+'%)',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
-    if(pendingUsers.value.length>0)items.push({id:'pu',level:'info',icon:'i',text:pendingUsers.value.length+' 个用户待审核',btnType:'outline',btnText:'去审核',action:function(){nav('accounts');}});
+    var ds=currentUser.perms&&currentUser.perms.dataScope;
+    var role=currentUser.roleName;
+    if(role==='系统管理员'||role==='修复委员会主任'){
+      var up=relics.value.filter(function(r){return r.status==='已上传';});
+      if(up.length>0)items.push({id:'p1',level:'warn',icon:'!',text:up.length+' 件文物等待分配修复师',btnType:'outline',btnText:'去分配',action:function(){nav('assignment');}});
+      relics.value.filter(function(r){return r.status==='修复中'&&r.progress<30;}).slice(0,3).forEach(function(r){items.push({id:'p'+r.id,level:'no',icon:'!',text:r.id+' 修复进度偏低 ('+r.progress+'%)',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
+      if(pendingUsers.value.length>0)items.push({id:'pu',level:'info',icon:'i',text:pendingUsers.value.length+' 个用户待审核',btnType:'outline',btnText:'去审核',action:function(){nav('accounts');}});
+    }else if(role==='修复师'){
+      var myRepairing=relics.value.filter(function(r){return r.status==='修复中'&&r.restorer===currentUser.name;});
+      var myPending2=relics.value.filter(function(r){return r.status==='待修复'&&r.restorer===currentUser.name;});
+      if(myPending2.length>0||myRepairing.length>0){
+        items.push({id:'p_summary',level:'warn',icon:'!',text:'您共有 '+(myPending2.length+myRepairing.length)+' 件文物待处理（待修复 '+myPending2.length+' · 修复中 '+myRepairing.length+'）',btnType:'outline',btnText:'去监控',action:function(){nav('monitor');}});
+      }
+      myRepairing.slice(0,5).forEach(function(r){items.push({id:'p'+r.id,level:'no',icon:'!',text:r.id+' 修复中 (进度 '+r.progress+'% · '+stageLabel(r.progress)+')',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
+      myPending2.slice(0,5).forEach(function(r){items.push({id:'p'+r.id,level:'warn',icon:'!',text:r.id+' 待您开始修复',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
+    }else if(role==='保管员'){
+      var myUploads=relics.value.filter(function(r){return r.uploadedBy===currentUser.name&&r.status==='已上传';});
+      if(myUploads.length>0)items.push({id:'p3',level:'warn',icon:'!',text:myUploads.length+' 件您上传的文物待分配修复师',btnType:'outline',btnText:'查看',action:function(){nav('relics');}});
+    }else if(role==='研究人员'){
+      var recently=relics.value.filter(function(r){return r.status==='已修复';}).slice(-3);
+      recently.forEach(function(r){items.push({id:'p'+r.id,level:'info',icon:'i',text:r.id+' 已修复完成，可查看档案',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
+    }
     return items;
+  });
+
+  // Per-user pending total
+  var myPendingTotal=computed(function(){
+    var role=currentUser.roleName;
+    if(!role)return 0;
+    if(role==='修复师'){
+      return relics.value.filter(function(r){
+        return r.restorer===currentUser.name&&(r.status==='待修复'||r.status==='修复中');
+      }).length;
+    }else if(role==='系统管理员'||role==='修复委员会主任'){
+      return relics.value.filter(function(r){
+        return r.status==='已上传'||r.status==='待修复'||r.status==='修复中';
+      }).length;
+    }else if(role==='保管员'){
+      return relics.value.filter(function(r){
+        return r.uploadedBy===currentUser.name&&(r.status==='已上传'||r.status==='待修复');
+      }).length;
+    }else if(role==='研究人员'){
+      return relics.value.filter(function(r){return r.status==='已修复';}).length;
+    }
+    return 0;
+  });
+  var myRepairingCount=computed(function(){
+    return relics.value.filter(function(r){return r.restorer===currentUser.name&&r.status==='修复中';}).length;
+  });
+  var myPendingRepairCount=computed(function(){
+    return relics.value.filter(function(r){return r.restorer===currentUser.name&&r.status==='待修复';}).length;
+  });
+  var myDoneCount=computed(function(){
+    return relics.value.filter(function(r){return r.restorer===currentUser.name&&r.status==='已修复';}).length;
   });
 
   var sel=ref(null);var dTab=ref('timeline');
   var selTimeline=computed(function(){if(!sel.value)return[];return[
     {id:1,time:sel.value.uploadTime,cls:'done',title:'文物上传',desc:'移动端扫描上传完成',person:sel.value.uploadedBy},
-    {id:2,time:sel.value.uploadTime,cls:'done',title:'数据审核',desc:'Web端审核通过',person:'管理员'},
-  ].concat(sel.value.restorer?[{id:3,time:'',cls:'',title:'修复分配',desc:'分配给 '+sel.value.restorer,person:'管理人员'}]:[])
+    {id:2,time:sel.value.uploadTime,cls:'done',title:'数据审核',desc:'Web端审核通过',person:'龙强'},
+  ].concat(sel.value.restorer?[{id:3,time:'',cls:'',title:'修复分配',desc:'分配给 '+sel.value.restorer,person:'董莹'}]:[])
     .concat(sel.value.status==='修复中'||sel.value.status==='已修复'?[{id:4,time:sel.value.lastUpdate,cls:'warn',title:'修复进行中',desc:'当前进度 '+sel.value.progress+'%',person:sel.value.restorer}]:[])
-    .concat(sel.value.status==='已修复'?[{id:5,time:'',cls:'done',title:'修复完成',desc:'验收通过，已归档',person:'验收组'}]:[]);});
+    .concat(sel.value.status==='已修复'?[{id:5,time:'',cls:'done',title:'修复完成',desc:'验收通过，已归档',person:'朱杰慧'}]:[]);});
   var selChain=computed(function(){if(!sel.value)return[];return[
-    {step:'1 建立专题库',time:sel.value.uploadTime.split(' ')[0],desc:'创建'+sel.value.library,person:'项目负责人',role:'项目负责人',terminal:'Web端'},
+    {step:'1 建立专题库',time:sel.value.uploadTime.split(' ')[0],desc:'创建'+sel.value.library,person:'赖文博',role:'项目负责人',terminal:'Web端'},
     {step:'2 扫描上传',time:sel.value.uploadTime,desc:'移动端扫描上传',person:sel.value.uploadedBy,role:'现场工作人员',terminal:'移动端'},
-    {step:'3 数据审核',time:sel.value.uploadTime,desc:'审核通过',person:'管理员',role:'Web端管理员',terminal:'Web端'},
-  ].concat(sel.value.restorer?[{step:'4 修复分配',time:'',desc:'分配给修复师',person:'管理人员',role:'修复部门负责人',terminal:'Web端'}]:[])
+    {step:'3 数据审核',time:sel.value.uploadTime,desc:'审核通过',person:'龙强',role:'Web端管理员',terminal:'Web端'},
+  ].concat(sel.value.restorer?[{step:'4 修复分配',time:'',desc:'分配给修复师',person:'董莹',role:'修复部门负责人',terminal:'Web端'}]:[])
     .concat(sel.value.status==='修复中'||sel.value.status==='已修复'?[{step:'5 修复执行',time:sel.value.lastUpdate,desc:'进度'+sel.value.progress+'%',person:sel.value.restorer,role:'修复师',terminal:'移动端'}]:[])
-    .concat(sel.value.status==='已修复'?[{step:'6 验收确认',time:'',desc:'验收通过',person:'验收组',role:'修复委员会',terminal:'Web端'},{step:'7 归档跟踪',time:'',desc:'修复档案归档',person:'档案管理员',role:'档案管理员',terminal:'Web端'}]:[]);});
-  var repairLogs=ref([{id:1,date:'2026-08-21',content:'表面清洗，去除浮锈',materials:'EDTA溶液、脱离子水',hours:4,restorer:'刘修复'},{id:2,date:'2026-08-22',content:'断裂部位粘接',materials:'Paraloid B-72',hours:6,restorer:'刘修复'},{id:3,date:'2026-08-23',content:'补全处理，做色',materials:'矿物颜料、丙烯酸树脂',hours:5,restorer:'刘修复'}]);
+    .concat(sel.value.status==='已修复'?[{step:'6 验收确认',time:'',desc:'验收通过',person:'朱杰慧',role:'修复委员会',terminal:'Web端'},{step:'7 归档跟踪',time:'',desc:'修复档案归档',person:'秦浩然',role:'档案管理员',terminal:'Web端'}]:[]);});
+  var repairLogs=ref([{id:1,date:'2026-08-21',content:'表面清洗，去除浮锈',materials:'EDTA溶液、脱离子水',hours:4,restorer:'赵鹏'},{id:2,date:'2026-08-22',content:'断裂部位粘接',materials:'Paraloid B-72',hours:6,restorer:'萧强静'},{id:3,date:'2026-08-23',content:'补全处理，做色',materials:'矿物颜料、丙烯酸树脂',hours:5,restorer:'崔丹'}]);
   function viewRelic(r){sel.value=r;dTab.value='timeline';nav('detail');}
+  function delRelic(r){
+    if(!confirm('确认删除文物 '+r.id+'？此操作不可撤销。'))return;
+    var idx=relics.value.findIndex(function(x){return x.id===r.id;});
+    if(idx>=0){
+      relics.value.splice(idx,1);
+      if(r.userUploaded){var saved=loadUserRelics();var sIdx=saved.findIndex(function(x){return x.id===r.id;});if(sIdx>=0){saved.splice(sIdx,1);saveUserRelics(saved);}}
+      deleteRelicOverride(r.id);
+      alert('文物 '+r.id+' 已删除');
+    }
+  }
+  var showEditRestorerModal=ref(false);var editRestorerTarget=ref(null);var editRestorerForm=reactive({restorer:'',status:'',deadline:''});
+  function openEditRestorer(r){editRestorerTarget.value=r;editRestorerForm.restorer=r.restorer||'';editRestorerForm.status=r.status||'';editRestorerForm.deadline=r.deadline||'';showEditRestorerModal.value=true;}
+  function saveEditRestorer(){
+    var r=editRestorerTarget.value;if(!r)return;
+    if(editRestorerForm.restorer)r.restorer=editRestorerForm.restorer;
+    if(editRestorerForm.status)r.status=editRestorerForm.status;
+    if(editRestorerForm.deadline)r.deadline=editRestorerForm.deadline;
+    if(r.status==='已修复')r.progress=100;
+    else if(r.status==='修复中')r.progress=Math.max(r.progress||0,10);
+    else if(r.status==='待修复')r.progress=0;
+    r.lastUpdate=new Date().toLocaleString('zh-CN');
+    saveRelicChange(r);
+    showEditRestorerModal.value=false;
+  }
+  function approveUser(){var u=auditTarget.value;u.scope=auditForm.scope;u.perms=JSON.parse(JSON.stringify(auditForm.perms));u.status='正常';u.roleId=u.roleId||'restorer';var role=roles.find(function(r){return r.id===u.roleId;});if(role)u.roleName=role.name;u.lastLogin='未登录';u.nickname=u.name;allUsers.value.push(u);saveAllUsers(allUsers.value);var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);showAuditModal.value=false;var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+u.name+'」审核通过');}
 
   var showLibModal=ref(false);var newLib=reactive({name:'',prefix:'',desc:''});
   function createLib(){if(!newLib.name||!newLib.prefix){alert('请填写名称和前缀');return;}
     libs.value.push({id:'TL'+String(libs.value.length+1).padStart(2,'0'),name:newLib.name,prefix:newLib.prefix,desc:newLib.desc,count:0,status:'采集中'});
+    saveLibs(libs.value);
     showLibModal.value=false;newLib.name='';newLib.prefix='';newLib.desc='';
   }
   function filterByLib(lib){fLib.value=lib.name;nav('relics');}
@@ -440,11 +791,14 @@ createApp({setup(){
     var newId=prefix+'-2026-'+seq;
     var hasGlb=_pendingGlbBlob?true:false;
     var hasImg=_pendingImgBlob?true:false;
-    var glbBlobUrl=hasGlb?URL.createObjectURL(_pendingGlbBlob):'';
-    var imgBlobUrl=hasImg?URL.createObjectURL(_pendingImgBlob):'';
-    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgBlobUrl:relicImg(upForm.type,libCount),imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:glbBlobUrl,glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'','_glbUnrestoredIdbKey':hasGlb?newId+'_unrestored':'',userUploaded:true};
-    if(hasGlb){idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);});}
-    if(hasImg){idbSave('imgFiles',newId,_pendingImgBlob).catch(function(e){console.warn('Img IDB save failed:',e);});}
+    var imgIdbKey=hasImg?'idb://imgFiles/'+newId:'';
+    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgIdbKey:relicImg(upForm.type,libCount),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?('idb://glbFiles/'+newId+'_unrestored'):'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'','_glbUnrestoredIdbKey':hasGlb?newId+'_unrestored':'',userUploaded:true};
+    var savePromises=[];
+    if(hasGlb)savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
+    if(hasImg)savePromises.push(idbSave('imgFiles',newId,_pendingImgBlob).catch(function(e){console.warn('Img IDB save failed:',e);}));
+    Promise.all(savePromises).then(function(){
+      if(hasImg)resolveIdbUrl(imgIdbKey).then(function(url){if(url)resolvedImgs[newId]=url;});
+    });
     relics.value.unshift(newRelic);
     var saved=loadUserRelics();saved.unshift(newRelic);saveUserRelics(saved);
     if(lib)lib.count++;
@@ -463,7 +817,8 @@ createApp({setup(){
     r.deadline=assignForm.deadline;
     r.status='待修复';
     r.progress=0;
-    updateUserRelicInStorage(r);
+    r.lastUpdate=new Date().toLocaleString('zh-CN');
+    saveRelicChange(r);
     showAssignModal.value=false;
     alert('\u5df2\u5c06\u7f16\u53f7 '+r.id+' \u5206\u914d\u7ed9\u4fee\u590d\u5e08 '+assignForm.restorer);
   }
@@ -474,26 +829,131 @@ createApp({setup(){
     var r=relics.value.find(function(x){return x.id===traceSearch.value;});
     if(!r){traceResult.value=null;alert('未找到匹配的文物');return;}
     traceResult.value={id:r.id,chain:[
-      {step:'1 建立专题库',time:r.uploadTime.split(' ')[0],desc:'创建'+r.library,person:'项目负责人',role:'项目负责人',terminal:'Web端'},
+      {step:'1 建立专题库',time:r.uploadTime.split(' ')[0],desc:'创建'+r.library,person:'赖文博',role:'项目负责人',terminal:'Web端'},
       {step:'2 扫描上传',time:r.uploadTime,desc:'移动端扫描上传',person:r.uploadedBy,role:'现场工作人员',terminal:'移动端'},
-      {step:'3 数据审核',time:r.uploadTime,desc:'审核通过',person:'管理员',role:'Web端管理员',terminal:'Web端'},
-    ].concat(r.restorer?[{step:'4 修复分配',time:'',desc:'分配给修复师',person:'管理人员',role:'修复部门负责人',terminal:'Web端'}]:[])
+      {step:'3 数据审核',time:r.uploadTime,desc:'审核通过',person:'龙强',role:'Web端管理员',terminal:'Web端'},
+    ].concat(r.restorer?[{step:'4 修复分配',time:'',desc:'分配给修复师',person:'董莹',role:'修复部门负责人',terminal:'Web端'}]:[])
     .concat(r.status==='修复中'||r.status==='已修复'?[{step:'5 修复执行',time:r.lastUpdate,desc:'进度'+r.progress+'%',person:r.restorer,role:'修复师',terminal:'移动端'}]:[])
-    .concat(r.status==='已修复'?[{step:'6 验收确认',time:'',desc:'验收通过',person:'验收组',role:'修复委员会',terminal:'Web端'},{step:'7 归档跟踪',time:'',desc:'修复档案归档',person:'档案管理员',role:'档案管理员',terminal:'Web端'}]:[])};
+    .concat(r.status==='已修复'?[{step:'6 验收确认',time:'',desc:'验收通过',person:'朱杰慧',role:'修复委员会',terminal:'Web端'},{step:'7 归档跟踪',time:'',desc:'修复档案归档',person:'秦浩然',role:'档案管理员',terminal:'Web端'}]:[])};
   }
 
-  var monSearch=ref('');var monStage=ref('');
+  var monSearch=ref('');var monStage=ref('');var monStatus=ref('');
   function stageLabel(p){if(p<30)return '初期清洗';if(p<70)return '中期修复';return '后期收尾';}
-  var filteredMonitor=computed(function(){return relics.value.filter(function(r){
-    if(r.status!=='修复中')return false;
+  function stageFullLabel(r){
+    if(r.status==='待修复')return '待修复';
+    if(r.status==='修复中')return stageLabel(r.progress);
+    if(r.status==='已修复')return '已修复';
+    return r.status;
+  }
+  // Get all completed stage images — show images for stages that have been reached
+  function completedStageImgs(r){
+    if(!r)return [];
+    var list=[];
+    // Stage 1: excavated (always shown if uploaded)
+    if(r.imgBefore){
+      list.push({img:r.imgBefore,key:r.id,filter:'',label:'刚出土 · 病害记录'});
+    }
+    // Stage 2: cleaned (shown if reached 待修复 or beyond)
+    if(r.status==='待修复'||r.status==='修复中'||r.status==='已修复'){
+      var cleaned=r.imgCleaned;
+      var cleanedKey=cleaned?r.id+'_cleaned':r.id;
+      var cleanedSrc=cleaned||r.imgBefore;
+      list.push({img:cleanedSrc,key:cleanedKey,filter:stageFilter('cleaned'),label:'清理后 · 初步处理'});
+    }
+    // Stage 3: during repair (shown if reached 修复中)
+    if(r.status==='修复中'||r.status==='已修复'){
+      var during=r.imgDuring;
+      var duringKey=during?r.id+'_during':r.id;
+      var duringSrc=during||r.imgBefore;
+      list.push({img:duringSrc,key:duringKey,filter:stageFilter('during'),label:'修复中 · 过程记录'});
+    }
+    // Stage 4: after repair (shown only if 已修复)
+    if(r.status==='已修复'){
+      var after=r.imgAfter;
+      var afterKey=after?r.id+'_after':r.id;
+      var afterSrc=after||r.imgBefore;
+      list.push({img:afterSrc,key:afterKey,filter:stageFilter('after'),label:'修复后 · 修复完成'});
+    }
+    return list;
+  }
+  var filteredMonitor=computed(function(){return scopedRelics.value.filter(function(r){
+    if(r.status!=='修复中'&&r.status!=='待修复')return false;
+    if(monStatus.value==='待修复'&&r.status!=='待修复')return false;
+    if(monStatus.value==='修复中'&&r.status!=='修复中')return false;
     if(monSearch.value){var s=monSearch.value;if(r.id.indexOf(s)<0&&r.restorer.indexOf(s)<0)return false;}
+    if(r.status==='待修复'){
+      if(monStage.value==='初期'||monStage.value==='中期'||monStage.value==='后期')return false;
+      return true;
+    }
     if(monStage.value==='初期'&&r.progress>=30)return false;
     if(monStage.value==='中期'&&(r.progress<30||r.progress>=70))return false;
     if(monStage.value==='后期'&&r.progress<70)return false;
     return true;
   });});
+  var monitorPendingCount=computed(function(){return filteredMonitor.value.filter(function(r){return r.status==='待修复';}).length;});
+  var monitorRepairingCount=computed(function(){return filteredMonitor.value.filter(function(r){return r.status==='修复中';}).length;});
 
-  var pendingUsers=ref([{id:'U101',name:'王新员',workId:'CQ-101',phone:'13800000101',email:'wang@example.com',department:'修复部',roleId:'restorer',roleName:'修复师',regTime:'2026-08-23 09:30',status:'待审核',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}}]);
+  // Stage image upload wrapper: shows modal, then performs the transition
+  var _stageCallback=null;
+  function startRepair(r){
+    _stageCallback=function(){
+      r.status='修复中';
+      r.progress=Math.max(r.progress||0,10);
+      r.lastUpdate=new Date().toLocaleString('zh-CN');
+      saveRelicChange(r);
+      alert('已开始修复 '+r.id+'，状态更新为修复中');
+    };
+    openStageImgModal(r,'imgCleaned','清理后图片');
+  }
+  function advanceStage(r){
+    if(r.status==='待修复'){
+      startRepair(r);
+      return;
+    }
+    if(r.status==='修复中'){
+      if(r.progress<30){
+        r.progress=30;
+        r.lastUpdate=new Date().toLocaleString('zh-CN');
+        saveRelicChange(r);
+        alert(r.id+' 已进入中期修复阶段 (30%)');
+      }else if(r.progress<70){
+        r.progress=70;
+        r.lastUpdate=new Date().toLocaleString('zh-CN');
+        saveRelicChange(r);
+        alert(r.id+' 已进入后期收尾阶段 (70%)');
+      }else{
+        completeRepair(r);
+      }
+    }
+  }
+  function setProgress(r,val){
+    val=Math.max(0,Math.min(100,parseInt(val)||0));
+    if(val>=100){
+      // Reaching 100% requires completing the repair with image upload
+      completeRepair(r);
+      return;
+    }
+    r.progress=val;
+    r.lastUpdate=new Date().toLocaleString('zh-CN');
+    if(val>0&&r.status==='待修复'){
+      r.status='修复中';
+    }
+    saveRelicChange(r);
+  }
+  function completeRepair(r){
+    _stageCallback=function(){
+      r.status='已修复';
+      r.progress=100;
+      r.lastUpdate=new Date().toLocaleString('zh-CN');
+      saveRelicChange(r);
+      alert(r.id+' 修复完成！已标记为已修复');
+    };
+    openStageImgModal(r,'imgAfter','修复完成后图片');
+  }
+
+  var _initPending=[{id:'U101',name:'王新员',workId:'CQ-101',phone:'13800000101',email:'wang@example.com',department:'修复部',roleId:'restorer',roleName:'修复师',regTime:'2026-08-23 09:30',status:'待审核',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}}];
+  var _savedReg=loadRegUsers();if(_savedReg&&_savedReg.length)_initPending=_initPending.concat(_savedReg);
+  var pendingUsers=ref(_initPending);
   var activeUsers=computed(function(){return allUsers.value.filter(function(u){return u.status!=='待审核';});});
   var userSearch=ref('');
   var filteredUsers=computed(function(){return activeUsers.value.filter(function(u){if(!userSearch.value)return true;return u.name.indexOf(userSearch.value)>=0||u.workId.indexOf(userSearch.value)>=0||u.department.indexOf(userSearch.value)>=0;}).slice(0,50);});
@@ -501,16 +961,16 @@ createApp({setup(){
   function createUser(){if(!newUser.name||!newUser.workId){alert('请填写姓名和工号');return;}
     var role=roles.find(function(r){return r.id===newUser.roleId;});
     allUsers.value.push({id:'U'+Date.now(),name:newUser.name,workId:newUser.workId,nickname:newUser.name,roleId:newUser.roleId,roleName:role?role.name:'',department:newUser.department||'待分配',phone:newUser.phone||'未填写',status:'正常',lastLogin:'未登录',scope:'全部文物',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
+    saveAllUsers(allUsers.value);
     showUserModal.value=false;newUser.name='';newUser.workId='';newUser.department='';newUser.phone='';
   }
-  function toggleStatus(u){u.status=u.status==='正常'?'禁用':'正常';}
+  function toggleStatus(u){u.status=u.status==='正常'?'禁用':'正常';saveAllUsers(allUsers.value);}
 
   var showAuditModal=ref(false);var auditTarget=ref(null);
   var permList=[{key:'view',label:'查看文物数据'},{key:'edit',label:'编辑文物信息'},{key:'delete',label:'删除文物'},{key:'audit',label:'审核上传数据'},{key:'assign',label:'分配修复任务'}];
   var auditForm=reactive({scope:'全部文物',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
   function openAudit(u){auditTarget.value=u;auditForm.scope='全部文物';auditForm.perms={view:true,edit:false,delete:false,audit:false,assign:false};showAuditModal.value=true;}
-  function approveUser(){var u=auditTarget.value;u.scope=auditForm.scope;u.perms=JSON.parse(JSON.stringify(auditForm.perms));u.status='正常';u.lastLogin='未登录';u.nickname=u.name;allUsers.value.push(u);var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);showAuditModal.value=false;alert('用户「'+u.name+'」审核通过');}
-  function rejectUser(u){var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);alert('用户「'+u.name+'」的注册申请已驳回');}
+  function rejectUser(u){var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+u.name+'」的注册申请已驳回');}
   function rejectFromAudit(){if(auditTarget.value){rejectUser(auditTarget.value);showAuditModal.value=false;}}
 
   var showPermModal=ref(false);var permTarget=ref(null);
@@ -869,6 +1329,57 @@ createApp({setup(){
     initViewer3D();
   }
 
+  // Stage image upload modal
+  var showStageImgModal=ref(false);
+  var stageImgTarget=ref(null);
+  var stageImgField=ref('');
+  var stageImgLabel=ref('');
+  var _pendingStageImgBlob=null;
+  function openStageImgModal(r,field,label){
+    stageImgTarget.value=r;
+    stageImgField.value=field;
+    stageImgLabel.value=label;
+    _pendingStageImgBlob=null;
+    showStageImgModal.value=true;
+  }
+  function onStageImgUpload(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    if(file.size>10*1024*1024){alert('图片过大（超过10MB），请压缩');e.target.value='';return;}
+    _pendingStageImgBlob=file;
+  }
+  function confirmStageImg(){
+    var r=stageImgTarget.value;
+    if(!r)return;
+    if(!_pendingStageImgBlob){
+      alert('请选择图片文件');
+      return;
+    }
+    var field=stageImgField.value;
+    var idbKey=r.id+'_'+field;
+    var blobUrl=URL.createObjectURL(_pendingStageImgBlob);
+    // Save idb:// URL in the relic field for persistence across refreshes
+    r[field]='idb://imgFiles/'+idbKey;
+    r['_'+field+'IdbKey']=idbKey;
+    r.lastUpdate=new Date().toLocaleString('zh-CN');
+    // Resolve for immediate display
+    if(field==='imgBefore')resolvedImgs[r.id]=blobUrl;
+    else if(field==='imgCleaned')resolvedImgs[r.id+'_cleaned']=blobUrl;
+    else if(field==='imgDuring')resolvedImgs[r.id+'_during']=blobUrl;
+    else if(field==='imgAfter')resolvedImgs[r.id+'_after']=blobUrl;
+    saveRelicChange(r);
+    idbSave('imgFiles',idbKey,_pendingStageImgBlob).catch(function(e){console.warn('Stage img IDB save failed:',e);});
+    showStageImgModal.value=false;
+    _pendingStageImgBlob=null;
+    // Execute the stage transition callback
+    if(_stageCallback){var cb=_stageCallback;_stageCallback=null;cb();}
+  }
+  function cancelStageImg(){
+    showStageImgModal.value=false;
+    _pendingStageImgBlob=null;
+    _stageCallback=null;
+  }
+
   return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
     page,pageTitle,nav,types,libs,relics,allUsers,
     canManageUsers,canViewStats,canViewAI,canAssign,canEdit,canDelete,canAudit,scopedRelics,
@@ -877,12 +1388,16 @@ createApp({setup(){
     showLibModal,newLib,createLib,filterByLib,showUploadModal,upForm,doUpload,
     showAssignModal,assignTarget,assignForm,restorers,openAssign,confirmAssign,
     traceSearch,traceResult,doTrace,
-    monSearch,monStage,filteredMonitor,stageLabel,
+    monSearch,monStage,monStatus,filteredMonitor,stageLabel,stageFullLabel,completedStageImgs,monitorPendingCount,monitorRepairingCount,
+    startRepair,advanceStage,setProgress,completeRepair,
+    myPendingTotal,myRepairingCount,myPendingRepairCount,myDoneCount,
     pendingUsers,activeUsers,userSearch,filteredUsers,showUserModal,newUser,createUser,toggleStatus,
     showAuditModal,auditTarget,permList,auditForm,openAudit,approveUser,rejectUser,rejectFromAudit,
     showPermModal,permTarget,openPermModal,restorerStats,roles,onPageEntered,
     aiSearch,aiRelic,aiAnalyzing,aiResult,aiAnalyze,analyzeRelicAI,
     model3DMode,loading3D,switch3DMode,initViewer3D,onGLBUpload,onRelicGLBUpload,onImgUpload,
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly,
-    resolvedImgs,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname};
+    resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
+    showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
+    relicFilter,relicStyle,relicStyleThumb,stageFilter};
 }}).mount('#app');
