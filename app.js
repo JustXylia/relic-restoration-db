@@ -161,8 +161,14 @@ function updateUserRelicInStorage(relic){
   saveRelicChange(relic);
 }
 
-// Clear stale localStorage from previous versions when user count changes
-try{var _v=localStorage.getItem('dataVersion');if(_v!=='v27'){localStorage.removeItem('allUsers_v1');localStorage.removeItem('relicOverrides_v1');localStorage.removeItem('libs_v1');localStorage.removeItem('loginUser_v1');localStorage.removeItem('userRelics_v1');localStorage.setItem('dataVersion','v27');}}catch(e){}
+// Migrate localStorage to new version — preserve user changes (relicOverrides, userRelics)
+try{var _v=localStorage.getItem('dataVersion');if(_v!=='v28'){
+  // Only clear user list to refresh generated users; keep relic overrides and user relics
+  localStorage.removeItem('allUsers_v1');
+  localStorage.removeItem('libs_v1');
+  localStorage.removeItem('loginUser_v1');
+  localStorage.setItem('dataVersion','v28');
+}}catch(e){}
 function resolveIdbUrl(url){
   if(!url||url.indexOf('idb://')!==0)return Promise.resolve(url);
   var parts=url.substring(6).split('/');
@@ -561,7 +567,17 @@ createApp({setup(){
     alert('注册申请已提交，请等待管理员审核通过后即可登录。');
     authMode.value='login';regForm.name='';regForm.workId='';regForm.phone='';regForm.email='';regForm.department='';regForm.roleId='';
   }
-  function logout(){loggedIn.value=false;loginForm.username='';loginForm.password='';loginErr.value='';try{localStorage.removeItem(LOGIN_KEY);}catch(e){}}
+  function logout(){
+    // Save all relic changes before logout to ensure persistence
+    try{
+      relics.value.forEach(function(r){
+        if(r.userUploaded||r._modified){saveRelicChange(r);}
+      });
+      saveAllUsers(allUsers.value);
+    }catch(e){console.warn('Save on logout failed:',e);}
+    loggedIn.value=false;loginForm.username='';loginForm.password='';loginErr.value='';
+    try{localStorage.removeItem(LOGIN_KEY);}catch(e){}
+  }
 
   var page=ref('dashboard');
   var pageTitle=computed(function(){return{dashboard:'总览面板',thematic:'专题库管理',relics:'文物列表',detail:'文物详情',assignment:'修复任务分配',monitor:'修复进度监控',traceability:'责任链追溯',statistics:'统计分析',accounts:'用户与权限',aiRepair:'AI智能修复分析'}[page.value]||'';});
