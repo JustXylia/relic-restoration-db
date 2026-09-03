@@ -51,8 +51,37 @@ var RELIC_OVERRIDES_KEY='relicOverrides_v1';
 var LIBS_KEY='libs_v1';
 var USERS_KEY='allUsers_v1';
 
+// --- Server sync: push localStorage data to server so all devices share the same state ---
+var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,LOGIN_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_KEY];
+var _syncTimer=null;
+function syncToServer(){
+  if(_syncTimer)clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(function(){
+    _syncKeys.forEach(function(k){
+      var val=localStorage.getItem(k);
+      if(val!==null){
+        fetch('/api/'+k,{method:'POST',headers:{'Content-Type':'application/json'},body:val}).catch(function(){});
+      }
+    });
+  },300);
+}
+function syncAllFromServer(callback){
+  var pending=_syncKeys.length;
+  if(pending===0&&callback)callback();
+  _syncKeys.forEach(function(k){
+    fetch('/api/'+k).then(function(r){return r.json();}).then(function(res){
+      if(res.data!==null&&res.data!==undefined){
+        localStorage.setItem(k,typeof res.data==='string'?res.data:JSON.stringify(res.data));
+      }
+      pending--;
+      if(pending===0&&callback)callback();
+    }).catch(function(){pending--;if(pending===0&&callback)callback();});
+  });
+}
+
 function saveUserRelics(relics){
   try{localStorage.setItem(USER_RELICS_KEY,JSON.stringify(relics));}catch(e){console.error('Save failed:',e);}
+  syncToServer();
 }
 function loadUserRelics(){
   try{var s=localStorage.getItem(USER_RELICS_KEY);if(!s)return[];
@@ -70,12 +99,14 @@ function loadUserRelics(){
 }
 function saveRegUsers(users){
   try{localStorage.setItem(REG_USERS_KEY,JSON.stringify(users));}catch(e){}
+  syncToServer();
 }
 function loadRegUsers(){
   try{var s=localStorage.getItem(REG_USERS_KEY);return s?JSON.parse(s):[];}catch(e){return[];}
 }
 function saveLoginUser(user){
   try{localStorage.setItem(LOGIN_KEY,JSON.stringify({name:user.name,nickname:user.nickname,roleId:user.role,roleName:user.roleName,workId:user.workId,scope:user.scope,perms:user.perms}));}catch(e){}
+  syncToServer();
 }
 function loadLoginUser(){
   try{var s=localStorage.getItem(LOGIN_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
@@ -87,6 +118,7 @@ function loadRelicOverrides(){
 }
 function saveRelicOverrides(obj){
   try{localStorage.setItem(RELIC_OVERRIDES_KEY,JSON.stringify(obj));}catch(e){console.error('Override save failed:',e);}
+  syncToServer();
 }
 function saveRelicOverride(id,fields){
   var all=loadRelicOverrides();
@@ -109,6 +141,7 @@ function deleteRelicOverride(id){
 // Library persistence
 function saveLibs(libs){
   try{localStorage.setItem(LIBS_KEY,JSON.stringify(libs.map(function(l){return{id:l.id,name:l.name,prefix:l.prefix,desc:l.desc,count:l.count,status:l.status};})));}catch(e){}
+  syncToServer();
 }
 function loadLibs(){
   try{var s=localStorage.getItem(LIBS_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
@@ -119,6 +152,7 @@ function saveAllUsers(users){
   try{localStorage.setItem(USERS_KEY,JSON.stringify(users.map(function(u){
     return{id:u.id,name:u.name,workId:u.workId,nickname:u.nickname,roleId:u.roleId,roleName:u.roleName,department:u.dept||u.department,phone:u.phone,status:u.status,lastLogin:u.lastLogin,scope:u.scope,perms:u.perms};
   })));}catch(e){}
+  syncToServer();
 }
 function loadAllUsers(){
   try{var s=localStorage.getItem(USERS_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
@@ -458,6 +492,52 @@ createApp({setup(){
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
   onMounted(function(){
     resolveAllIdbImgs();
+    // Sync data from server on load, then reload Vue reactive data
+    syncAllFromServer(function(){
+      // Reload relics from (now-updated) localStorage
+      var _newUserRelics=loadUserRelics();
+      var _newOverrides=loadRelicOverrides();
+      var _newGenRelics=genRelics();
+      var _newAll=_newUserRelics.concat(_newGenRelics);
+      _newAll.forEach(function(r){
+        var ov=_newOverrides[r.id];
+        if(ov){for(var k in ov){r[k]=ov[k];}}
+      });
+      relics.value.splice(0,relics.value.length);
+      _newAll.forEach(function(r){relics.value.push(r);});
+      // Reload allUsers
+      var _savedUsers=loadAllUsers();
+      if(_savedUsers){allUsers.value.splice(0,allUsers.value.length);_savedUsers.forEach(function(u){allUsers.value.push(u);});}
+      // Reload libs
+      var _savedLibs2=loadLibs();
+      if(_savedLibs2){libs.value.splice(0,libs.value.length);_savedLibs2.forEach(function(l){libs.value.push(l);});}
+      resolveAllIdbImgs();
+    });
+    // Periodic sync every 15s — pull updates from other devices
+    setInterval(function(){
+      if(!loggedIn.value)return;
+      syncAllFromServer(function(){
+        var _newOverrides=loadRelicOverrides();
+        relics.value.forEach(function(r){
+          var ov=_newOverrides[r.id];
+          if(ov){for(var k in ov){r[k]=ov[k];}}
+        });
+        var _savedUsers=loadAllUsers();
+        if(_savedUsers){allUsers.value.splice(0,allUsers.value.length);_savedUsers.forEach(function(u){allUsers.value.push(u);});}
+      });
+    },15000);
+    // Also sync when window regains focus
+    window.addEventListener('focus',function(){
+      syncAllFromServer(function(){
+        var _newOverrides2=loadRelicOverrides();
+        relics.value.forEach(function(r){
+          var ov=_newOverrides2[r.id];
+          if(ov){for(var k in ov){r[k]=ov[k];}}
+        });
+        var _savedUsers2=loadAllUsers();
+        if(_savedUsers2){allUsers.value.splice(0,allUsers.value.length);_savedUsers2.forEach(function(u){allUsers.value.push(u);});}
+      });
+    });
     // Auto-login from saved session
     var saved=loadLoginUser();
     if(saved&&saved.name){
