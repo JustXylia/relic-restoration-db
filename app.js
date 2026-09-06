@@ -697,25 +697,6 @@ var _appComponent={setup(){
         if(_savedUsers2){allUsers.value.splice(0,allUsers.value.length);_savedUsers2.forEach(function(u){allUsers.value.push(u);});}
       });
     });
-    // Manual refresh function — pull latest data from server and update UI
-    function refreshFromServer(){
-      syncAllFromServer(function(){
-        try{
-          var _o=loadRelicOverrides();
-          var _ur2=loadUserRelics();
-          var _gr2=genRelics();
-          var _all2=_ur2.concat(_gr2);
-          _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
-          relics.value.splice(0,relics.value.length);
-          _all2.forEach(function(r){relics.value.push(r);});
-          var _su3=loadAllUsers();
-          if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
-          var _sl3=loadLibs();
-          if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
-          resolveAllIdbImgs();
-        }catch(e){}
-      });
-    }
     // Auto-login from saved session
     var saved=loadLoginUser();
     if(saved&&saved.name){
@@ -1741,6 +1722,26 @@ var _appComponent={setup(){
           setTimeout(function(){ghSyncMsg.value='';},3000);
         }
       });
+    });
+  }
+
+  // Manual refresh function — pull latest data from server and update UI
+  function refreshFromServer(){
+    syncAllFromServer(function(){
+      try{
+        var _o=loadRelicOverrides();
+        var _ur2=loadUserRelics();
+        var _gr2=genRelics();
+        var _all2=_ur2.concat(_gr2);
+        _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
+        relics.value.splice(0,relics.value.length);
+        _all2.forEach(function(r){relics.value.push(r);});
+        var _su3=loadAllUsers();
+        if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
+        var _sl3=loadLibs();
+        if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
+        resolveAllIdbImgs();
+      }catch(e){}
     });
   }
 
