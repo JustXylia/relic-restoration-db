@@ -50,6 +50,72 @@ var LOGIN_KEY='loginUser_v1';
 var RELIC_OVERRIDES_KEY='relicOverrides_v1';
 var LIBS_KEY='libs_v1';
 var USERS_KEY='allUsers_v1';
+var SEQ_KEY='seqCounter_v1';
+var DELETED_KEY='deletedRelics_v1';
+
+// Deleted relics tombstone — tracks deleted IDs for sync across devices
+function loadDeletedRelics(){
+  try{var s=localStorage.getItem(DELETED_KEY);return s?JSON.parse(s):[];}catch(e){return[];}
+}
+function saveDeletedRelics(arr){
+  try{localStorage.setItem(DELETED_KEY,JSON.stringify(arr));}catch(e){}
+  syncToServer();
+}
+function markRelicDeleted(id){
+  var deleted=loadDeletedRelics();
+  if(deleted.indexOf(id)<0){
+    deleted.push(id);
+    saveDeletedRelics(deleted);
+  }
+}
+function isRelicDeleted(id){
+  var deleted=loadDeletedRelics();
+  return deleted.indexOf(id)>=0;
+}
+
+// Sequence counter — ensures unique IDs even after deletions
+function loadSeqCounter(){
+  try{var s=localStorage.getItem(SEQ_KEY);return s?JSON.parse(s):{};}catch(e){return{};}
+}
+function saveSeqCounter(obj){
+  try{localStorage.setItem(SEQ_KEY,JSON.stringify(obj));}catch(e){}
+  syncToServer();
+}
+// Scan all local relic data to find max seq number for a prefix
+function _scanMaxSeq(prefix){
+  var max=0;
+  // Scan userRelics
+  try{
+    var ur=loadUserRelics();
+    ur.forEach(function(r){
+      if(r.id&&r.id.indexOf(prefix+'-')===0){
+        var parts=r.id.split('-');
+        if(parts.length>=3){var seq=parseInt(parts[2],10);if(!isNaN(seq)&&seq>max)max=seq;}
+      }
+    });
+  }catch(e){}
+  // Scan overrides (in case generated relics were modified and have custom ids)
+  try{
+    var ov=loadRelicOverrides();
+    for(var id in ov){
+      if(id.indexOf(prefix+'-')===0){
+        var parts2=id.split('-');
+        if(parts2.length>=3){var seq2=parseInt(parts2[2],10);if(!isNaN(seq2)&&seq2>max)max=seq2;}
+      }
+    }
+  }catch(e){}
+  return max;
+}
+function getNextSeq(prefix){
+  var counter=loadSeqCounter();
+  var savedMax=counter[prefix]||0;
+  var scanMax=_scanMaxSeq(prefix);
+  var maxSeq=Math.max(savedMax,scanMax);
+  var next=maxSeq+1;
+  counter[prefix]=next;
+  saveSeqCounter(counter);
+  return next;
+}
 
 // --- Netlify Cloud Sync: primary backend for data sync (no token needed) ---
 var NETLIFY_API_KEY='netlifyApiUrl_v1';
@@ -136,7 +202,7 @@ function pushKeyToNetlify(key,callback){
 
 // --- GitHub Cloud Sync: data stored in GitHub repo, accessible from any device ---
 var GH_CONFIG_KEY='ghConfig_v1';
-var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_KEY];
+var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_KEY,SEQ_KEY,DELETED_KEY];
 var _syncTimer=null;
 var _ghCache={}; // cache file SHAs for faster updates
 var _autoPullTimer=null;
@@ -186,8 +252,16 @@ function mergeServerData(key, serverData){
     return localData;
   }
   
-  // For arrays — merge by id (relics/users/libs)
+  // For arrays — merge by id (relics/users/libs) or by value (simple arrays like deleted)
   if(Array.isArray(localData)&&Array.isArray(serverData)){
+    // Simple string/number arrays (like deletedRelics): union
+    if(key===DELETED_KEY){
+      var set={};
+      localData.forEach(function(v){set[v]=true;});
+      serverData.forEach(function(v){set[v]=true;});
+      return Object.keys(set);
+    }
+    // Object arrays: merge by id
     var idKey='id';
     if(key===USERS_KEY||key===REG_USERS_KEY)idKey='workId';
     var map={};
@@ -200,8 +274,22 @@ function mergeServerData(key, serverData){
     return Object.values(map);
   }
   
-  // For objects — merge keys, local values take precedence
+  // For objects — merge keys
   if(typeof localData==='object'&&typeof serverData==='object'&&!Array.isArray(localData)&&!Array.isArray(serverData)){
+    // Special handling for seqCounter: take the larger value per prefix
+    if(key===SEQ_KEY){
+      var merged={};
+      var allKeys={};
+      for(var sk2 in serverData)allKeys[sk2]=true;
+      for(var lk2 in localData)allKeys[lk2]=true;
+      for(var k2 in allKeys){
+        var lv=localData[k2]||0;
+        var sv=serverData[k2]||0;
+        merged[k2]=Math.max(lv,sv);
+      }
+      return merged;
+    }
+    // For other objects (relicOverrides): local values take precedence
     var merged={};
     for(var sk in serverData){merged[sk]=serverData[sk];}
     for(var lk in localData){merged[lk]=localData[lk];}
@@ -307,6 +395,31 @@ function syncToServer(){
   },500);
 }
 
+// Purge locally-stored relics that are marked as deleted (tombstone cleanup)
+function purgeDeletedRelics(){
+  var deleted=loadDeletedRelics();
+  if(!deleted||deleted.length===0)return false;
+  var changed=false;
+  // Clean userRelics
+  try{
+    var ur=loadUserRelics();
+    var newUr=ur.filter(function(r){return deleted.indexOf(r.id)<0;});
+    if(newUr.length!==ur.length){
+      saveUserRelics(newUr);
+      changed=true;
+    }
+  }catch(e){}
+  // Clean relicOverrides
+  try{
+    var ov=loadRelicOverrides();
+    deleted.forEach(function(id){
+      if(ov[id]){delete ov[id];changed=true;}
+    });
+    if(changed)saveRelicOverrides(ov);
+  }catch(e){}
+  return changed;
+}
+
 // Pull all keys from server
 // Priority: Netlify first, then GitHub as fallback
 function syncAllFromServer(callback){
@@ -316,7 +429,11 @@ function syncAllFromServer(callback){
     var pullFn=hasNetlifyBackend()?pullKeyFromNetlify:pullKeyFromGh;
     pullFn(k,function(ok){
       done++;
-      if(done===pending&&callback)callback();
+      if(done===pending){
+        // After all data is pulled, purge locally deleted relics
+        try{purgeDeletedRelics();}catch(e){}
+        if(callback)callback();
+      }
     });
   });
 }
@@ -1153,6 +1270,7 @@ createApp({setup(){
       relics.value.splice(idx,1);
       if(r.userUploaded){var saved=loadUserRelics();var sIdx=saved.findIndex(function(x){return x.id===r.id;});if(sIdx>=0){saved.splice(sIdx,1);saveUserRelics(saved);}}
       deleteRelicOverride(r.id);
+      markRelicDeleted(r.id); // Mark as deleted for sync
       alert('文物 '+r.id+' 已删除');
     }
   }
@@ -1185,8 +1303,8 @@ createApp({setup(){
   function doUpload(){if(!upForm.library){alert('请选择专题库');return;}
     var lib=libs.value.find(function(l){return l.name===upForm.library;});
     var prefix=lib?lib.prefix:'GEN';
-    var libCount=relics.value.filter(function(r){return r.library===upForm.library;}).length+1;
-    var seq=String(libCount).padStart(5,'0');
+    var seqNum=getNextSeq(prefix);
+    var seq=String(seqNum).padStart(5,'0');
     var newId=prefix+'-2026-'+seq;
     var hasGlb=_pendingGlbBlob?true:false;
     var hasImg=_pendingImgBlob?true:false;
