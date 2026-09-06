@@ -51,6 +51,89 @@ var RELIC_OVERRIDES_KEY='relicOverrides_v1';
 var LIBS_KEY='libs_v1';
 var USERS_KEY='allUsers_v1';
 
+// --- Netlify Cloud Sync: primary backend for data sync (no token needed) ---
+var NETLIFY_API_KEY='netlifyApiUrl_v1';
+var _netlifyApiUrl='';
+
+function loadNetlifyConfig(){
+  try{
+    var s=localStorage.getItem(NETLIFY_API_KEY);
+    if(s)return s;
+  }catch(e){}
+  return '';
+}
+function saveNetlifyConfig(url){
+  try{localStorage.setItem(NETLIFY_API_KEY,url);}catch(e){}
+}
+function getNetlifyApiUrl(){
+  // Auto-detect if hosted on Netlify
+  if(!_netlifyApiUrl){
+    var saved=loadNetlifyConfig();
+    if(saved){
+      _netlifyApiUrl=saved;
+    }else if(window.location.hostname.indexOf('netlify.app')>=0){
+      _netlifyApiUrl='https://'+window.location.hostname+'/.netlify/functions/api/';
+    }
+  }
+  return _netlifyApiUrl;
+}
+function hasNetlifyBackend(){
+  return getNetlifyApiUrl().length>0;
+}
+
+// Pull from Netlify API
+function pullKeyFromNetlify(key,callback){
+  var url=getNetlifyApiUrl();
+  if(!url){if(callback)callback(false);return;}
+  fetch(url+key+'?t='+Date.now(),{cache:'no-store'}).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(res){
+    try{
+      if(res&&res.ok&&res.data!==null&&res.data!==undefined){
+        var serverData=res.data;
+        if(typeof serverData==='string'){
+          try{serverData=JSON.parse(serverData);}catch(e){}
+        }
+        var merged=mergeServerData(key,serverData);
+        localStorage.setItem(key,JSON.stringify(merged));
+        if(callback)callback(true);
+      }else{
+        // No data on server, keep local
+        if(callback)callback(true);
+      }
+    }catch(e){
+      if(callback)callback(false);
+    }
+  }).catch(function(){
+    if(callback)callback(false);
+  });
+}
+
+// Push to Netlify API
+function pushKeyToNetlify(key,callback){
+  var url=getNetlifyApiUrl();
+  if(!url){if(callback)callback(false,'no api url');return;}
+  var val=localStorage.getItem(key);
+  if(val===null){if(callback)callback(false,'no local data');return;}
+  fetch(url+key,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:val
+  }).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(res){
+    if(res&&res.ok){
+      if(callback)callback(true);
+    }else{
+      if(callback)callback(false,res.error||'push failed');
+    }
+  }).catch(function(e){
+    if(callback)callback(false,e.message);
+  });
+}
+
 // --- GitHub Cloud Sync: data stored in GitHub repo, accessible from any device ---
 var GH_CONFIG_KEY='ghConfig_v1';
 var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_KEY];
@@ -207,23 +290,31 @@ function b64EncodeUnicode(str){
   }));
 }
 
-// Sync all keys to GitHub (debounced)
+// Sync all keys to server (debounced)
+// Priority: Netlify first, then GitHub (if token configured)
 function syncToServer(){
-  if(!hasGhToken())return; // only push if token is configured
+  if(!hasNetlifyBackend()&&!hasGhToken())return; // no backend available
   if(_syncTimer)clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
     _syncKeys.forEach(function(k){
-      pushKeyToGh(k,function(){});
+      if(hasNetlifyBackend()){
+        pushKeyToNetlify(k,function(){});
+      }
+      if(hasGhToken()){
+        pushKeyToGh(k,function(){});
+      }
     });
   },500);
 }
 
-// Pull all keys from GitHub
+// Pull all keys from server
+// Priority: Netlify first, then GitHub as fallback
 function syncAllFromServer(callback){
   var pending=_syncKeys.length;
   var done=0;
   _syncKeys.forEach(function(k){
-    pullKeyFromGh(k,function(ok){
+    var pullFn=hasNetlifyBackend()?pullKeyFromNetlify:pullKeyFromGh;
+    pullFn(k,function(ok){
       done++;
       if(done===pending&&callback)callback();
     });
@@ -1690,6 +1781,7 @@ createApp({setup(){
 
   // --- Cloud Sync UI State ---
   var ghConfig=ref(loadGhConfig());
+  var netlifyApiUrl=ref(loadNetlifyConfig());
   var ghSyncMsg=ref('');
   var ghSyncing=ref(false);
   function saveCloudConfig(){
@@ -1702,25 +1794,31 @@ createApp({setup(){
     };
     saveGhConfig(cfg);
     ghConfig.value=cfg;
+    // Save Netlify API URL
+    var nUrl=netlifyApiUrl.value.trim();
+    saveNetlifyConfig(nUrl);
+    _netlifyApiUrl=nUrl; // reset cache so it picks up the new value
     ghSyncMsg.value='配置已保存';
     setTimeout(function(){ghSyncMsg.value='';},3000);
   }
   function testCloudPull(){
     ghSyncing.value=true;
     ghSyncMsg.value='正在测试拉取...';
-    pullKeyFromGh(USER_RELICS_KEY,function(ok){
+    var pullFn=hasNetlifyBackend()?pullKeyFromNetlify:pullKeyFromGh;
+    pullFn(USER_RELICS_KEY,function(ok){
       ghSyncing.value=false;
-      ghSyncMsg.value=ok?'✓ 拉取成功，可以读取云端数据':'✗ 拉取失败，请检查仓库配置';
+      ghSyncMsg.value=ok?'✓ 拉取成功，可以读取云端数据':'✗ 拉取失败，请检查配置';
     });
   }
   function testCloudPush(){
-    if(!ghConfig.value.token){
-      ghSyncMsg.value='请先配置 GitHub Token 才能测试写入';
+    if(!hasNetlifyBackend()&&!ghConfig.value.token){
+      ghSyncMsg.value='请先配置 Netlify API 地址或 GitHub Token';
       return;
     }
     ghSyncing.value=true;
     ghSyncMsg.value='正在测试写入...';
-    pushKeyToGh(USER_RELICS_KEY,function(ok,err){
+    var pushFn=hasNetlifyBackend()?pushKeyToNetlify:pushKeyToGh;
+    pushFn(USER_RELICS_KEY,function(ok,err){
       ghSyncing.value=false;
       ghSyncMsg.value=ok?'✓ 写入成功，云端同步已启用':'✗ 写入失败: '+(err||'未知错误');
     });
@@ -1735,15 +1833,16 @@ createApp({setup(){
     });
   }
   function manualPushAll(){
-    if(!ghConfig.value.token){
-      ghSyncMsg.value='请先配置 GitHub Token';
+    if(!hasNetlifyBackend()&&!ghConfig.value.token){
+      ghSyncMsg.value='请先配置 Netlify API 地址或 GitHub Token';
       return;
     }
     ghSyncing.value=true;
     ghSyncMsg.value='正在推送所有数据到云端...';
     var done=0;
     _syncKeys.forEach(function(k){
-      pushKeyToGh(k,function(){
+      var pushFn=hasNetlifyBackend()?pushKeyToNetlify:pushKeyToGh;
+      pushFn(k,function(){
         done++;
         if(done===_syncKeys.length){
           ghSyncing.value=false;
@@ -1795,5 +1894,5 @@ createApp({setup(){
     resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
     relicFilter,relicStyle,relicStyleThumb,stageFilter,
-    ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
+    ghConfig,netlifyApiUrl,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
 }}).mount('#app');
