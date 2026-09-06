@@ -80,15 +80,7 @@ function hasGhToken(){
   return cfg.token&&cfg.token.length>0;
 }
 function getGhRawUrl(key){
-  // Use same-origin relative path when possible (avoids CORS issues on GitHub Pages)
-  // Falls back to raw.githubusercontent.com for cross-origin scenarios
   var cfg=loadGhConfig();
-  var protocol=window.location.protocol;
-  var host=window.location.host;
-  // If hosted on GitHub Pages, use relative path for same-origin fetch
-  if(host.indexOf('github.io')>=0||host.indexOf('localhost')>=0||host.indexOf('127.0.0.1')>=0){
-    return './'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
-  }
   return 'https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
 }
 function getGhApiUrl(key){
@@ -98,24 +90,20 @@ function getGhApiUrl(key){
 
 // Pull single key from GitHub (read-only, no token needed for public repos)
 function pullKeyFromGh(key,callback){
-  try{
-    fetch(getGhRawUrl(key),{cache:'no-store'}).then(function(r){
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      return r.text();
-    }).then(function(text){
-      try{
-        JSON.parse(text); // validate JSON
-        localStorage.setItem(key,text);
-        if(callback)callback(true);
-      }catch(e){
-        if(callback)callback(false);
-      }
-    }).catch(function(){
+  fetch(getGhRawUrl(key),{cache:'no-store'}).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.text();
+  }).then(function(text){
+    try{
+      JSON.parse(text); // validate JSON
+      localStorage.setItem(key,text);
+      if(callback)callback(true);
+    }catch(e){
       if(callback)callback(false);
-    });
-  }catch(e){
+    }
+  }).catch(function(){
     if(callback)callback(false);
-  }
+  });
 }
 
 // Push single key to GitHub (needs token)
@@ -207,12 +195,10 @@ function startAutoPull(){
   },30000);
 }
 
-// Initialize: try to pull on startup (best-effort, deferred to avoid blocking Vue init)
+// Initialize: try to pull on startup (best-effort)
 try{
-  setTimeout(function(){
-    try{syncAllFromServer(function(){});}catch(e){}
-    startAutoPull();
-  },2000);
+  syncAllFromServer(function(){});
+  startAutoPull();
 }catch(e){}
 
 function saveUserRelics(relics){
@@ -642,7 +628,7 @@ function genUsers(){
   return users;
 }
 
-var _appComponent={setup(){
+createApp({setup(){
   var loggedIn=ref(false);var authMode=ref('login');
   var loginForm=reactive({username:'',password:''});var loginErr=ref('');
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
@@ -1767,21 +1753,4 @@ var _appComponent={setup(){
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
     relicFilter,relicStyle,relicStyleThumb,stageFilter,
     ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
-}};
-try{
-  var _appEl=document.getElementById('app');
-  console.log('[DEBUG] app element exists:',!!_appEl,'innerHTML length:',_appEl?_appEl.innerHTML.length:0);
-  var _app=Vue.createApp(_appComponent);
-  _app.config.errorHandler=function(err,vm,info){
-    console.error('[Vue Error]',err&&err.message?err.message:String(err),'| Info:',info);
-  };
-  _app.config.warnHandler=function(msg,vm,trace){
-    console.warn('[Vue Warn]',msg);
-  };
-  var _mountResult=_app.mount('#app');
-  console.log('[DEBUG] mount result:',typeof _mountResult);
-  console.log('[DEBUG] app innerHTML after mount:',_appEl.innerHTML.substring(0,100));
-}catch(e){
-  console.error('[App mount failed]',e.message||String(e),e.stack||'');
-  document.getElementById('app').innerHTML='<div style="padding:40px;text-align:center"><h2 style="color:#ef4444">应用加载失败</h2><p style="color:#666;margin-top:8px">'+(e.message||e)+'</p><p style="color:#999;margin-top:12px;font-size:12px">请刷新页面重试</p></div>';
-}
+}}).mount('#app');
