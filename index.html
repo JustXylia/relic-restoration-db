@@ -770,10 +770,16 @@ tr:hover td{background:#F8FAFC}
             <div class="fg"><label>分支</label><input v-model="ghConfig.branch" placeholder="如：main"></div>
             <div class="fg"><label>数据目录</label><input v-model="ghConfig.dataDir" placeholder="如：data"></div>
           </div>
-          <div class="fg"><label>GitHub Personal Access Token <span style="color:var(--c-danger)">*</span></label>
-            <input v-model="ghConfig.token" type="password" placeholder="ghp_xxxxxxxxxxxx">
+          <div class="fg"><label>GitHub Personal Access Token</label>
+            <input v-model="ghConfig.token" type="password" placeholder="ghp_xxxxxxxxxxxx（可选）">
             <div style="font-size:12px;color:var(--c-text-3);margin-top:6px">
               Token 需要 repo 权限。<a href="https://github.com/settings/tokens" target="_blank" style="color:var(--c-primary)">在这里创建 Token</a>
+            </div>
+          </div>
+          <div class="fg"><label>Netlify API 地址 <span style="color:var(--c-ok)">（推荐，无需Token）</span></label>
+            <input v-model="netlifyApiUrl" placeholder="https://xxx.netlify.app/.netlify/functions/api/">
+            <div style="font-size:12px;color:var(--c-text-3);margin-top:6px">
+              配置后自动使用 Netlify 云端同步，无需 GitHub Token。在 Netlify 上部署后填写此地址。
             </div>
           </div>
           <div v-if="ghSyncMsg" style="margin:12px 0;padding:10px 14px;border-radius:8px;font-size:13px;background:var(--blue7);color:var(--blue1)">
