@@ -88,6 +88,47 @@ function getGhApiUrl(key){
   return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+cfg.dataDir+'/'+key+'.json';
 }
 
+// Merge server data into local data — never overwrite local changes
+function mergeServerData(key, serverData){
+  var localRaw=localStorage.getItem(key);
+  var localData=null;
+  try{if(localRaw)localData=JSON.parse(localRaw);}catch(e){localData=null;}
+  
+  // If local is empty, just use server data
+  if(!localData||(Array.isArray(localData)&&localData.length===0)||(typeof localData==='object'&&Object.keys(localData).length===0)){
+    return serverData;
+  }
+  // If server is empty/null, keep local data
+  if(!serverData||(Array.isArray(serverData)&&serverData.length===0)||(typeof serverData==='object'&&Object.keys(serverData).length===0)){
+    return localData;
+  }
+  
+  // For arrays — merge by id (relics/users/libs)
+  if(Array.isArray(localData)&&Array.isArray(serverData)){
+    var idKey='id';
+    if(key===USERS_KEY||key===REG_USERS_KEY)idKey='workId';
+    var map={};
+    localData.forEach(function(item){if(item&&item[idKey])map[item[idKey]]=item;});
+    serverData.forEach(function(item){
+      if(item&&item[idKey]&&!map[item[idKey]]){
+        map[item[idKey]]=item;
+      }
+    });
+    return Object.values(map);
+  }
+  
+  // For objects — merge keys, local values take precedence
+  if(typeof localData==='object'&&typeof serverData==='object'&&!Array.isArray(localData)&&!Array.isArray(serverData)){
+    var merged={};
+    for(var sk in serverData){merged[sk]=serverData[sk];}
+    for(var lk in localData){merged[lk]=localData[lk];}
+    return merged;
+  }
+  
+  // Default: keep local
+  return localData;
+}
+
 // Pull single key from GitHub (read-only, no token needed for public repos)
 function pullKeyFromGh(key,callback){
   fetch(getGhRawUrl(key),{cache:'no-store'}).then(function(r){
@@ -95,8 +136,10 @@ function pullKeyFromGh(key,callback){
     return r.text();
   }).then(function(text){
     try{
-      JSON.parse(text); // validate JSON
-      localStorage.setItem(key,text);
+      var serverData=JSON.parse(text);
+      // Merge with local data instead of overwriting
+      var merged=mergeServerData(key,serverData);
+      localStorage.setItem(key,JSON.stringify(merged));
       if(callback)callback(true);
     }catch(e){
       if(callback)callback(false);
