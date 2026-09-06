@@ -81,7 +81,7 @@ function saveSeqCounter(obj){
   try{localStorage.setItem(SEQ_KEY,JSON.stringify(obj));}catch(e){}
   syncToServer();
 }
-// Scan all local relic data to find max seq number for a prefix
+// Scan all relic data (user + generated) to find max seq number for a prefix
 function _scanMaxSeq(prefix){
   var max=0;
   // Scan userRelics
@@ -94,7 +94,7 @@ function _scanMaxSeq(prefix){
       }
     });
   }catch(e){}
-  // Scan overrides (in case generated relics were modified and have custom ids)
+  // Scan overrides
   try{
     var ov=loadRelicOverrides();
     for(var id in ov){
@@ -102,6 +102,18 @@ function _scanMaxSeq(prefix){
         var parts2=id.split('-');
         if(parts2.length>=3){var seq2=parseInt(parts2[2],10);if(!isNaN(seq2)&&seq2>max)max=seq2;}
       }
+    }
+  }catch(e){}
+  // Scan generated relics to avoid collision
+  try{
+    if(typeof genRelics==='function'){
+      var gr=genRelics();
+      gr.forEach(function(r){
+        if(r.id&&r.id.indexOf(prefix+'-')===0){
+          var parts3=r.id.split('-');
+          if(parts3.length>=3){var seq3=parseInt(parts3[2],10);if(!isNaN(seq3)&&seq3>max)max=seq3;}
+        }
+      });
     }
   }catch(e){}
   return max;
@@ -1079,7 +1091,18 @@ createApp({setup(){
   var libs=ref(_savedLibs?_savedLibs.concat(_defaultLibs.filter(function(d){return !_savedLibs.find(function(s){return s.id===d.id;});})):_defaultLibs);
   var _generatedRelics=genRelics();
   var _userRelics=loadUserRelics();
-  var relics=ref(_userRelics.concat(_generatedRelics));
+  // Deduplicate: if user-uploaded relic has same ID as a generated one,
+  // keep the user-uploaded version (it takes precedence)
+  var _userIds={};
+  _userRelics.forEach(function(r){_userIds[r.id]=true;});
+  var _filteredGenerated=_generatedRelics.filter(function(r){return !_userIds[r.id];});
+  // Filter out deleted relics (tombstone) — applies to both user-uploaded and generated
+  var _deletedList=loadDeletedRelics();
+  var _deletedMap={};
+  _deletedList.forEach(function(id){_deletedMap[id]=true;});
+  var _finalUserRelics=_userRelics.filter(function(r){return !_deletedMap[r.id];});
+  var _finalGenerated=_filteredGenerated.filter(function(r){return !_deletedMap[r.id];});
+  var relics=ref(_finalUserRelics.concat(_finalGenerated));
 
   // Apply persisted overrides to generated relics (status, progress, restorer, images, etc.)
   var _overrides=loadRelicOverrides();
@@ -1978,7 +2001,17 @@ createApp({setup(){
         var _o=loadRelicOverrides();
         var _ur2=loadUserRelics();
         var _gr2=genRelics();
-        var _all2=_ur2.concat(_gr2);
+        // Deduplicate: user-uploaded takes precedence over generated
+        var _uids={};
+        _ur2.forEach(function(r){_uids[r.id]=true;});
+        var _fg2=_gr2.filter(function(r){return !_uids[r.id];});
+        // Filter out deleted relics (tombstone)
+        var _dl2=loadDeletedRelics();
+        var _dm2={};
+        _dl2.forEach(function(id){_dm2[id]=true;});
+        var _fur2=_ur2.filter(function(r){return !_dm2[r.id];});
+        var _ffg2=_fg2.filter(function(r){return !_dm2[r.id];});
+        var _all2=_fur2.concat(_ffg2);
         _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
         relics.value.splice(0,relics.value.length);
         _all2.forEach(function(r){relics.value.push(r);});
