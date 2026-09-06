@@ -51,33 +51,155 @@ var RELIC_OVERRIDES_KEY='relicOverrides_v1';
 var LIBS_KEY='libs_v1';
 var USERS_KEY='allUsers_v1';
 
-// --- Server sync: push localStorage data to server so all devices share the same state ---
-var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,LOGIN_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_KEY];
+// --- GitHub Cloud Sync: data stored in GitHub repo, accessible from any device ---
+var GH_CONFIG_KEY='ghConfig_v1';
+var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_KEY];
 var _syncTimer=null;
+var _ghCache={}; // cache file SHAs for faster updates
+var _autoPullTimer=null;
+
+function loadGhConfig(){
+  try{
+    var s=localStorage.getItem(GH_CONFIG_KEY);
+    if(s)return JSON.parse(s);
+  }catch(e){}
+  // Default config based on current repo (can be changed by user)
+  return {
+    owner:'JustXylia',
+    repo:'relic-restoration-db',
+    branch:'main',
+    dataDir:'data',
+    token:''
+  };
+}
+function saveGhConfig(cfg){
+  try{localStorage.setItem(GH_CONFIG_KEY,JSON.stringify(cfg));}catch(e){}
+}
+function hasGhToken(){
+  var cfg=loadGhConfig();
+  return cfg.token&&cfg.token.length>0;
+}
+function getGhRawUrl(key){
+  var cfg=loadGhConfig();
+  return 'https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
+}
+function getGhApiUrl(key){
+  var cfg=loadGhConfig();
+  return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+cfg.dataDir+'/'+key+'.json';
+}
+
+// Pull single key from GitHub (read-only, no token needed for public repos)
+function pullKeyFromGh(key,callback){
+  fetch(getGhRawUrl(key),{cache:'no-store'}).then(function(r){
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return r.text();
+  }).then(function(text){
+    try{
+      JSON.parse(text); // validate JSON
+      localStorage.setItem(key,text);
+      if(callback)callback(true);
+    }catch(e){
+      if(callback)callback(false);
+    }
+  }).catch(function(){
+    if(callback)callback(false);
+  });
+}
+
+// Push single key to GitHub (needs token)
+function pushKeyToGh(key,callback){
+  var cfg=loadGhConfig();
+  if(!cfg.token){if(callback)callback(false,'no token');return;}
+  
+  var val=localStorage.getItem(key);
+  if(val===null){if(callback)callback(false,'no local data');return;}
+  
+  var url=getGhApiUrl(key);
+  var content=b64EncodeUnicode(val);
+  
+  // First get the SHA of existing file (if any)
+  fetch(url+'?ref='+cfg.branch,{
+    headers:{'Authorization':'token '+cfg.token,'Accept':'application/vnd.github.v3+json'}
+  }).then(function(r){
+    if(r.status===404)return null; // file doesn't exist yet
+    if(!r.ok)throw new Error('GET failed: '+r.status);
+    return r.json();
+  }).then(function(existing){
+    var payload={
+      message:'Update '+key+' data',
+      content:content,
+      branch:cfg.branch
+    };
+    if(existing&&existing.sha){
+      payload.sha=existing.sha;
+      _ghCache[key]=existing.sha;
+    }
+    
+    return fetch(url,{
+      method:'PUT',
+      headers:{
+        'Authorization':'token '+cfg.token,
+        'Accept':'application/vnd.github.v3+json',
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify(payload)
+    });
+  }).then(function(r){
+    if(!r.ok)throw new Error('PUT failed: '+r.status);
+    return r.json();
+  }).then(function(result){
+    if(result&&result.content&&result.content.sha){
+      _ghCache[key]=result.content.sha;
+    }
+    if(callback)callback(true);
+  }).catch(function(e){
+    if(callback)callback(false,e.message);
+  });
+}
+
+// Helper: UTF-8 safe base64 encode
+function b64EncodeUnicode(str){
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,function(match,p1){
+    return String.fromCharCode('0x'+p1);
+  }));
+}
+
+// Sync all keys to GitHub (debounced)
 function syncToServer(){
+  if(!hasGhToken())return; // only push if token is configured
   if(_syncTimer)clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
     _syncKeys.forEach(function(k){
-      var val=localStorage.getItem(k);
-      if(val!==null){
-        fetch('/api/'+k,{method:'POST',headers:{'Content-Type':'application/json'},body:val}).catch(function(){});
-      }
+      pushKeyToGh(k,function(){});
     });
-  },300);
+  },500);
 }
+
+// Pull all keys from GitHub
 function syncAllFromServer(callback){
   var pending=_syncKeys.length;
-  if(pending===0&&callback)callback();
+  var done=0;
   _syncKeys.forEach(function(k){
-    fetch('/api/'+k).then(function(r){return r.json();}).then(function(res){
-      if(res.data!==null&&res.data!==undefined){
-        localStorage.setItem(k,typeof res.data==='string'?res.data:JSON.stringify(res.data));
-      }
-      pending--;
-      if(pending===0&&callback)callback();
-    }).catch(function(){pending--;if(pending===0&&callback)callback();});
+    pullKeyFromGh(k,function(ok){
+      done++;
+      if(done===pending&&callback)callback();
+    });
   });
 }
+
+// Auto-pull: check for updates every 30 seconds
+function startAutoPull(){
+  if(_autoPullTimer)clearInterval(_autoPullTimer);
+  _autoPullTimer=setInterval(function(){
+    syncAllFromServer(function(){});
+  },30000);
+}
+
+// Initialize: try to pull on startup (best-effort)
+try{
+  syncAllFromServer(function(){});
+  startAutoPull();
+}catch(e){}
 
 function saveUserRelics(relics){
   try{localStorage.setItem(USER_RELICS_KEY,JSON.stringify(relics));}catch(e){console.error('Save failed:',e);}
@@ -301,6 +423,7 @@ function srand(seed){
 
 // 6 new 3D model relics - all restored, Southwest China sites
 var newRelics3D=[
+  {id:'BYQ-2026-00000',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆涪陵区',era:'汉代',disease:'锈蚀、局部变形、口沿残缺',name:'汉代青铜壶',imgBefore:'img/stages/han_pot_excavated.jpg',imgCleaned:'img/stages/han_pot_cleaned.jpg',imgDuring:'img/stages/han_pot_repairing.jpg',imgAfter:'img/stages/han_pot_repaired.jpg',glbRestored:'img/3d/han_pot_restored.glb',glbUnrestored:'img/3d/han_pot_broken.glb',uploader:'赵鹏',restorer:'崔丹',status:'已修复',progress:100},
   {id:'BYQ-2026-00001',type:'陶瓷',lib:'三峡出土文物专题',site:'重庆巫山县',era:'金代',disease:'釉面磨损、口沿小豁',name:'代号00001',imgBefore:'img/stages/r12_excavated.jpg',imgCleaned:'img/stages/r12_repairing.jpg',imgDuring:'img/stages/r12_cleaned.jpg',imgAfter:'img/stages/r12_repaired.jpg',glbRestored:'img/3d/relic3d_12_web.glb',glbUnrestored:'',uploader:'吴波文',restorer:'阎志强',status:'已修复',progress:100},
   {id:'BYQ-2026-00002',type:'陶瓷',lib:'三峡出土文物专题',site:'重庆奉节县',era:'元代',disease:'冲线、足部修复痕',name:'代号00002',imgBefore:'img/stages/r22_excavated.jpg',imgCleaned:'img/stages/r22_repairing.jpg',imgDuring:'img/stages/r22_cleaned.jpg',imgAfter:'img/stages/r22_repaired.jpg',glbRestored:'img/3d/relic3d_22_web.glb',glbUnrestored:'',uploader:'钱志强',restorer:'龙宇慧',status:'已修复',progress:100},
   {id:'BYQ-2026-00003',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巴南区',era:'战国',disease:'锈蚀、局部变形',name:'代号00003',imgBefore:'img/stages/r32_excavated.jpg',imgCleaned:'img/stages/r32_repairing.jpg',imgDuring:'img/stages/r32_cleaned.jpg',imgAfter:'img/stages/r32_repaired.jpg',glbRestored:'img/3d/relic3d_32_web.glb',glbUnrestored:'',uploader:'孔冰',restorer:'万嘉豪',status:'已修复',progress:100},
@@ -445,6 +568,26 @@ function genRelics(){
     nr.glbUnrestoredName=nr.glbUnrestored?nr.glbUnrestored.split('/').pop():'';
     all.unshift(nr);
   }
+  // Add 三羊尊 at position 25 (not on first page, page size=20)
+  var syz={
+    id:'BYQ-2026-02138',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巫山',era:'商朝',
+    name:'三羊尊',status:'已修复',progress:100,
+    disease:'肩部羊首饰件局部缺损；圈足铸造穿孔、边缘残缺；器身大面积蓝绿灰绿色锈蚀；埋藏裂隙多处；表面土垢硬结物覆盖云雷地纹；点腐蚀坑分布；存在粉状锈风险',
+    imgBefore:'img/stages/sanyangzun_excavated.jpg',
+    imgCleaned:'img/stages/sanyangzun_cleaned.jpg',
+    imgDuring:'img/stages/sanyangzun_repairing.jpg',
+    imgAfter:'img/stages/sanyangzun_repaired.jpg',
+    glbRestored:'img/3d/sanyangzun_restored.glb',
+    glbUnrestored:'img/3d/sanyangzun_broken.glb',
+    uploader:'赵鹏',restorer:'崔丹',
+    library:'巴渝青铜器专题',size:'通高43.8cm 口径42cm 底径23.5cm 腹围106cm',weight:'待称重',
+    uploadedBy:'赵鹏',uploadTime:'2026-04-12 10:30',
+    deadline:'2026-08-15',lastUpdate:'2026-07-28 14:20',
+    has3D:true,
+    glbRestoredName:'sanyangzun_restored.glb',
+    glbUnrestoredName:'sanyangzun_broken.glb'
+  };
+  if(all.length>25){all.splice(25,0,syz);}else{all.push(syz);}
   return all;
 }
 
@@ -491,9 +634,10 @@ createApp({setup(){
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
   onMounted(function(){
-    resolveAllIdbImgs();
+    try{resolveAllIdbImgs();}catch(e){}
     // Sync data from server on load, then reload Vue reactive data
     syncAllFromServer(function(){
+      try{
       // Reload relics from (now-updated) localStorage
       var _newUserRelics=loadUserRelics();
       var _newOverrides=loadRelicOverrides();
@@ -512,6 +656,7 @@ createApp({setup(){
       var _savedLibs2=loadLibs();
       if(_savedLibs2){libs.value.splice(0,libs.value.length);_savedLibs2.forEach(function(l){libs.value.push(l);});}
       resolveAllIdbImgs();
+      }catch(e){console.warn('Init callback error:',e);}
     });
     // Periodic sync every 15s — pull updates from other devices
     setInterval(function(){
@@ -538,6 +683,25 @@ createApp({setup(){
         if(_savedUsers2){allUsers.value.splice(0,allUsers.value.length);_savedUsers2.forEach(function(u){allUsers.value.push(u);});}
       });
     });
+    // Manual refresh function — pull latest data from server and update UI
+    function refreshFromServer(){
+      syncAllFromServer(function(){
+        try{
+          var _o=loadRelicOverrides();
+          var _ur2=loadUserRelics();
+          var _gr2=genRelics();
+          var _all2=_ur2.concat(_gr2);
+          _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
+          relics.value.splice(0,relics.value.length);
+          _all2.forEach(function(r){relics.value.push(r);});
+          var _su3=loadAllUsers();
+          if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
+          var _sl3=loadLibs();
+          if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
+          resolveAllIdbImgs();
+        }catch(e){}
+      });
+    }
     // Auto-login from saved session
     var saved=loadLoginUser();
     if(saved&&saved.name){
@@ -624,6 +788,23 @@ createApp({setup(){
     u.lastLogin=new Date().toLocaleString('zh-CN');
     saveLoginUser(currentUser);
     loggedIn.value=true;
+    // Pull latest data from server after login, then refresh UI
+    syncAllFromServer(function(){
+      try{
+        var _ov=loadRelicOverrides();
+        var _ur=loadUserRelics();
+        var _gr=genRelics();
+        var _all=_ur.concat(_gr);
+        _all.forEach(function(r){var o=_ov[r.id];if(o){for(var k in o){r[k]=o[k];}}});
+        relics.value.splice(0,relics.value.length);
+        _all.forEach(function(r){relics.value.push(r);});
+        var _su=loadAllUsers();
+        if(_su){allUsers.value.splice(0,allUsers.value.length);_su.forEach(function(x){allUsers.value.push(x);});}
+        var _sl=loadLibs();
+        if(_sl){libs.value.splice(0,libs.value.length);_sl.forEach(function(x){libs.value.push(x);});}
+        resolveAllIdbImgs();
+      }catch(e){}
+    });
     nextTick(function(){setTimeout(function(){initCharts();},600);});
   }
   function doRegister(){
@@ -652,7 +833,7 @@ createApp({setup(){
   }
 
   var page=ref('dashboard');
-  var pageTitle=computed(function(){return{dashboard:'总览面板',thematic:'专题库管理',relics:'文物列表',detail:'文物详情',assignment:'修复任务分配',monitor:'修复进度监控',traceability:'责任链追溯',statistics:'统计分析',accounts:'用户与权限',aiRepair:'AI智能修复分析'}[page.value]||'';});
+  var pageTitle=computed(function(){return{dashboard:'总览面板',thematic:'专题库管理',relics:'文物列表',detail:'文物详情',assignment:'修复任务分配',monitor:'修复进度监控',traceability:'责任链追溯',statistics:'统计分析',accounts:'用户与权限',aiRepair:'AI智能修复分析',cloud:'云端同步'}[page.value]||'';});
   function nav(p){page.value=p;}
 
   var types=['青铜器','石质','金质','陶瓷'];
@@ -728,6 +909,21 @@ createApp({setup(){
   function imgFallback(e){e.target.src=placeholderSvg;}
 
   var fStatus=ref('全部');var fType=ref('');var fLib=ref('');var search=ref('');
+  var assignSearch=ref('');
+  var pendingAssignRelics=computed(function(){
+    return scopedRelics.value.filter(function(r){return r.status==='已上传';});
+  });
+  var filteredAssignRelics=computed(function(){
+    var q=assignSearch.value.trim().toLowerCase();
+    if(!q)return pendingAssignRelics.value;
+    return pendingAssignRelics.value.filter(function(r){
+      return (r.id&&r.id.toLowerCase().indexOf(q)>=0)||
+             (r.name&&r.name.toLowerCase().indexOf(q)>=0)||
+             (r.type&&r.type.toLowerCase().indexOf(q)>=0)||
+             (r.disease&&r.disease.toLowerCase().indexOf(q)>=0)||
+             (r.site&&r.site.toLowerCase().indexOf(q)>=0);
+    });
+  });
   var filteredRelics=computed(function(){return scopedRelics.value.filter(function(r){
     if(fStatus.value!=='全部'&&r.status!==fStatus.value)return false;
     if(fType.value&&r.type!==fType.value)return false;
@@ -1468,10 +1664,77 @@ createApp({setup(){
     _stageCallback=null;
   }
 
+  // --- Cloud Sync UI State ---
+  var ghConfig=ref(loadGhConfig());
+  var ghSyncMsg=ref('');
+  var ghSyncing=ref(false);
+  function saveCloudConfig(){
+    var cfg={
+      owner:ghConfig.value.owner.trim(),
+      repo:ghConfig.value.repo.trim(),
+      branch:ghConfig.value.branch.trim(),
+      dataDir:ghConfig.value.dataDir.trim(),
+      token:ghConfig.value.token.trim()
+    };
+    saveGhConfig(cfg);
+    ghConfig.value=cfg;
+    ghSyncMsg.value='配置已保存';
+    setTimeout(function(){ghSyncMsg.value='';},3000);
+  }
+  function testCloudPull(){
+    ghSyncing.value=true;
+    ghSyncMsg.value='正在测试拉取...';
+    pullKeyFromGh(USER_RELICS_KEY,function(ok){
+      ghSyncing.value=false;
+      ghSyncMsg.value=ok?'✓ 拉取成功，可以读取云端数据':'✗ 拉取失败，请检查仓库配置';
+    });
+  }
+  function testCloudPush(){
+    if(!ghConfig.value.token){
+      ghSyncMsg.value='请先配置 GitHub Token 才能测试写入';
+      return;
+    }
+    ghSyncing.value=true;
+    ghSyncMsg.value='正在测试写入...';
+    pushKeyToGh(USER_RELICS_KEY,function(ok,err){
+      ghSyncing.value=false;
+      ghSyncMsg.value=ok?'✓ 写入成功，云端同步已启用':'✗ 写入失败: '+(err||'未知错误');
+    });
+  }
+  function manualPullAll(){
+    ghSyncing.value=true;
+    ghSyncMsg.value='正在从云端拉取所有数据...';
+    syncAllFromServer(function(){
+      ghSyncing.value=false;
+      ghSyncMsg.value='✓ 数据拉取完成，页面即将刷新';
+      setTimeout(function(){location.reload();},1500);
+    });
+  }
+  function manualPushAll(){
+    if(!ghConfig.value.token){
+      ghSyncMsg.value='请先配置 GitHub Token';
+      return;
+    }
+    ghSyncing.value=true;
+    ghSyncMsg.value='正在推送所有数据到云端...';
+    var done=0;
+    _syncKeys.forEach(function(k){
+      pushKeyToGh(k,function(){
+        done++;
+        if(done===_syncKeys.length){
+          ghSyncing.value=false;
+          ghSyncMsg.value='✓ 所有数据已推送到云端';
+          setTimeout(function(){ghSyncMsg.value='';},3000);
+        }
+      });
+    });
+  }
+
   return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
     page,pageTitle,nav,types,libs,relics,allUsers,
     canManageUsers,canViewStats,canViewAI,canAssign,canEdit,canDelete,canAudit,scopedRelics,
     fStatus,fType,fLib,search,filteredRelics,pageSize,curPage,totalPages,visiblePages,pagedRelics,sc,sb,repairingCount,pendingCount,
+    assignSearch,filteredAssignRelics,pendingAssignRelics,refreshFromServer,
     showNoti,notifications,pendingItems,sel,dTab,selTimeline,selChain,repairLogs,viewRelic,
     showLibModal,newLib,createLib,filterByLib,showUploadModal,upForm,doUpload,
     showAssignModal,assignTarget,assignForm,restorers,openAssign,confirmAssign,
@@ -1487,5 +1750,6 @@ createApp({setup(){
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly,
     resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
-    relicFilter,relicStyle,relicStyleThumb,stageFilter};
+    relicFilter,relicStyle,relicStyleThumb,stageFilter,
+    ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
 }}).mount('#app');
