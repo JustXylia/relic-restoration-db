@@ -240,6 +240,7 @@ tr:hover td{background:#F8FAFC}
     <div class="nav-section">系统</div>
     <div class="nav-item" :class="{active:page==='statistics'}" @click="nav('statistics')" v-if="canViewStats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计分析</span></div>
     <div class="nav-item" :class="{active:page==='accounts'}" @click="nav('accounts')" v-if="canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span>用户与权限</span></div>
+    <div class="nav-item" :class="{active:page==='cloud'}" @click="nav('cloud')" v-if="canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg><span>云端同步</span></div>
   </div>
   <div class="main">
     <div class="topbar">
@@ -530,14 +531,23 @@ tr:hover td{background:#F8FAFC}
       <!-- ASSIGNMENT -->
       <div v-else-if="page==='assignment'" key="assignment">
         <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg>修复任务分配</span></div>
-          <div class="alert alert-info"><span>以下文物已完成上传审核，等待分配修复人员</span></div>
+          <div class="card-h">
+            <span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg>修复任务分配</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:12px;color:var(--c-text-2)">待分配: <b style="color:var(--c-warn)">{{pendingAssignRelics.length}}</b> 件</span>
+              <button class="btn btn-outline btn-xs" @click="refreshFromServer" title="手动刷新数据">🔄 刷新</button>
+            </div>
+          </div>
+          <div class="alert alert-info"><span>以下文物已完成上传审核，等待分配修复人员 · 数据每15秒自动同步</span></div>
+          <div class="filters">
+            <input v-model="assignSearch" placeholder="搜索文物编号、名称、类型、病害、出土地..." style="flex:1" @keyup.enter="">
+          </div>
           <table><thead><tr><th>编号</th><th></th><th>类型</th><th>病害描述</th><th>上传时间</th><th>操作</th></tr></thead><tbody>
-            <tr v-for="r in scopedRelics.filter(x=>x.status==='已上传').slice(0,20)" :key="r.id"><td class="t-code">{{r.id}}</td>
+            <tr v-for="r in filteredAssignRelics" :key="r.id"><td class="t-code">{{r.id}}</td>
             <td><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" :style="'width:32px;height:32px;border-radius:6px;object-fit:cover;'+relicStyleThumb(r)"></td>
             <td>{{r.type}}</td><td class="t-sub">{{r.disease}}</td><td class="t-sub">{{r.uploadTime}}</td><td><button class="btn btn-primary btn-xs" @click="openAssign(r)">分配修复师</button></td></tr>
           </tbody></table>
-          <div v-if="scopedRelics.filter(x=>x.status==='已上传').length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>暂无待分配文物</p></div>
+          <div v-if="filteredAssignRelics.length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>{{assignSearch?'没有匹配的待分配文物':'暂无待分配文物'}}</p></div>
         </div>
       </div>
 
@@ -743,6 +753,65 @@ tr:hover td{background:#F8FAFC}
         </template>
       </div>
 
+      <!-- CLOUD SYNC -->
+      <div v-else-if="page==='cloud'" key="cloud">
+        <div v-if="!canManageUsers" class="card" style="text-align:center;padding:60px 20px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:16px"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
+          <p style="font-size:16px;font-weight:600;color:var(--c-text-2)">权限不足</p>
+          <p style="font-size:13px;color:var(--c-text-3);margin-top:4px">您当前身份（{{currentUser.roleName}}）无权访问云端同步设置</p>
+        </div>
+        <template v-else>
+        <div class="card">
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>云端同步设置</span></div>
+          <div class="alert alert-info"><span>i</span><span>数据存储在 GitHub 仓库中，支持多设备同步。配置后，管理员的操作会自动同步到云端，修复师可自动获取最新数据。无需本地服务器，任何设备随时可访问。</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="fg"><label>GitHub 用户名</label><input v-model="ghConfig.owner" placeholder="如：JustXylia"></div>
+            <div class="fg"><label>仓库名称</label><input v-model="ghConfig.repo" placeholder="如：relic-restoration-db"></div>
+            <div class="fg"><label>分支</label><input v-model="ghConfig.branch" placeholder="如：main"></div>
+            <div class="fg"><label>数据目录</label><input v-model="ghConfig.dataDir" placeholder="如：data"></div>
+          </div>
+          <div class="fg"><label>GitHub Personal Access Token <span style="color:var(--c-danger)">*</span></label>
+            <input v-model="ghConfig.token" type="password" placeholder="ghp_xxxxxxxxxxxx">
+            <div style="font-size:12px;color:var(--c-text-3);margin-top:6px">
+              Token 需要 repo 权限。<a href="https://github.com/settings/tokens" target="_blank" style="color:var(--c-primary)">在这里创建 Token</a>
+            </div>
+          </div>
+          <div v-if="ghSyncMsg" style="margin:12px 0;padding:10px 14px;border-radius:8px;font-size:13px;background:var(--blue7);color:var(--blue1)">
+            {{ghSyncMsg}}
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn btn-primary" @click="saveCloudConfig" :disabled="ghSyncing">保存配置</button>
+            <button class="btn btn-outline" @click="testCloudPull" :disabled="ghSyncing">测试读取</button>
+            <button class="btn btn-outline" @click="testCloudPush" :disabled="ghSyncing">测试写入</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 0 0118 0z"/><path d="M12 6v6l4 2"/></svg>同步操作</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div style="padding:16px;background:var(--c-bg);border-radius:10px">
+              <div style="font-weight:600;margin-bottom:6px">从云端拉取</div>
+              <div style="font-size:13px;color:var(--c-text-3);margin-bottom:12px">用云端最新数据覆盖本地数据</div>
+              <button class="btn btn-primary btn-sm" @click="manualPullAll" :disabled="ghSyncing">立即拉取</button>
+            </div>
+            <div style="padding:16px;background:var(--c-bg);border-radius:10px">
+              <div style="font-weight:600;margin-bottom:6px">推送到云端</div>
+              <div style="font-size:13px;color:var(--c-text-3);margin-bottom:12px">将本地所有数据上传到云端</div>
+              <button class="btn btn-success btn-sm" @click="manualPushAll" :disabled="ghSyncing">立即推送</button>
+            </div>
+          </div>
+          <div style="margin-top:14px;padding:12px 14px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E">
+            <b>使用说明：</b>
+            <ol style="margin:6px 0 0 18px;line-height:1.8">
+              <li>配置 GitHub 仓库信息和 Token 后，数据变更会自动同步到云端</li>
+              <li>所有访问网站的用户（包括修复师）都能自动读取最新数据（每30秒刷新）</li>
+              <li>首次配置后，请先点击"推送到云端"将现有数据上传</li>
+              <li>Token 仅保存在本地浏览器中，不会上传到任何服务器</li>
+            </ol>
+          </div>
+        </div>
+        </template>
+      </div>
+
       </transition>
     </div>
   </div>
@@ -774,7 +843,7 @@ tr:hover td{background:#F8FAFC}
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260826w" defer></script>
+<script src="app.js?v=20260906cloud" defer></script>
 </body>
 </html>
 
