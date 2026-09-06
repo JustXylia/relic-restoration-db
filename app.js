@@ -80,7 +80,15 @@ function hasGhToken(){
   return cfg.token&&cfg.token.length>0;
 }
 function getGhRawUrl(key){
+  // Use same-origin relative path when possible (avoids CORS issues on GitHub Pages)
+  // Falls back to raw.githubusercontent.com for cross-origin scenarios
   var cfg=loadGhConfig();
+  var protocol=window.location.protocol;
+  var host=window.location.host;
+  // If hosted on GitHub Pages, use relative path for same-origin fetch
+  if(host.indexOf('github.io')>=0||host.indexOf('localhost')>=0||host.indexOf('127.0.0.1')>=0){
+    return './'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
+  }
   return 'https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
 }
 function getGhApiUrl(key){
@@ -90,20 +98,24 @@ function getGhApiUrl(key){
 
 // Pull single key from GitHub (read-only, no token needed for public repos)
 function pullKeyFromGh(key,callback){
-  fetch(getGhRawUrl(key),{cache:'no-store'}).then(function(r){
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    return r.text();
-  }).then(function(text){
-    try{
-      JSON.parse(text); // validate JSON
-      localStorage.setItem(key,text);
-      if(callback)callback(true);
-    }catch(e){
+  try{
+    fetch(getGhRawUrl(key),{cache:'no-store'}).then(function(r){
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.text();
+    }).then(function(text){
+      try{
+        JSON.parse(text); // validate JSON
+        localStorage.setItem(key,text);
+        if(callback)callback(true);
+      }catch(e){
+        if(callback)callback(false);
+      }
+    }).catch(function(){
       if(callback)callback(false);
-    }
-  }).catch(function(){
+    });
+  }catch(e){
     if(callback)callback(false);
-  });
+  }
 }
 
 // Push single key to GitHub (needs token)
@@ -195,10 +207,12 @@ function startAutoPull(){
   },30000);
 }
 
-// Initialize: try to pull on startup (best-effort)
+// Initialize: try to pull on startup (best-effort, deferred to avoid blocking Vue init)
 try{
-  syncAllFromServer(function(){});
-  startAutoPull();
+  setTimeout(function(){
+    try{syncAllFromServer(function(){});}catch(e){}
+    startAutoPull();
+  },2000);
 }catch(e){}
 
 function saveUserRelics(relics){
