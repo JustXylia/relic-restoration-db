@@ -642,7 +642,7 @@ function genUsers(){
   return users;
 }
 
-createApp({setup(){
+var _appComponent={setup(){
   var loggedIn=ref(false);var authMode=ref('login');
   var loginForm=reactive({username:'',password:''});var loginErr=ref('');
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
@@ -1766,4 +1766,17 @@ createApp({setup(){
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
     relicFilter,relicStyle,relicStyleThumb,stageFilter,
     ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
-}}).mount('#app');
+}};
+try{
+  var _app=Vue.createApp(_appComponent);
+  _app.config.errorHandler=function(err,vm,info){
+    console.error('Vue Error:',err&&err.message?err.message:String(err),'| Info:',info);
+  };
+  _app.config.warnHandler=function(msg,vm,trace){
+    console.warn('Vue Warn:',msg);
+  };
+  _app.mount('#app');
+}catch(e){
+  console.error('App mount failed:',e.message,e.stack);
+  document.getElementById('app').innerHTML='<div style="padding:40px;text-align:center"><h2 style="color:#ef4444">应用加载失败</h2><p style="color:#666;margin-top:8px">'+(e.message||e)+'</p><p style="color:#999;margin-top:12px;font-size:12px">请刷新页面重试</p></div>';
+}
