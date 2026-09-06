@@ -24,7 +24,9 @@ const VALID_KEYS = [
   'regUsers_v1',
   'relicOverrides_v1',
   'libs_v1',
-  'allUsers_v1'
+  'allUsers_v1',
+  'seqCounter_v1',
+  'deletedRelics_v1'
 ];
 
 async function githubRequest(path, options = {}) {
