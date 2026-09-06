@@ -1768,15 +1768,19 @@ var _appComponent={setup(){
     ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
 }};
 try{
+  var _appEl=document.getElementById('app');
+  console.log('[DEBUG] app element exists:',!!_appEl,'innerHTML length:',_appEl?_appEl.innerHTML.length:0);
   var _app=Vue.createApp(_appComponent);
   _app.config.errorHandler=function(err,vm,info){
-    console.error('Vue Error:',err&&err.message?err.message:String(err),'| Info:',info);
+    console.error('[Vue Error]',err&&err.message?err.message:String(err),'| Info:',info);
   };
   _app.config.warnHandler=function(msg,vm,trace){
-    console.warn('Vue Warn:',msg);
+    console.warn('[Vue Warn]',msg);
   };
-  _app.mount('#app');
+  var _mountResult=_app.mount('#app');
+  console.log('[DEBUG] mount result:',typeof _mountResult);
+  console.log('[DEBUG] app innerHTML after mount:',_appEl.innerHTML.substring(0,100));
 }catch(e){
-  console.error('App mount failed:',e.message,e.stack);
+  console.error('[App mount failed]',e.message||String(e),e.stack||'');
   document.getElementById('app').innerHTML='<div style="padding:40px;text-align:center"><h2 style="color:#ef4444">应用加载失败</h2><p style="color:#666;margin-top:8px">'+(e.message||e)+'</p><p style="color:#999;margin-top:12px;font-size:12px">请刷新页面重试</p></div>';
 }
