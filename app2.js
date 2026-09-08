@@ -364,6 +364,8 @@ function pullKeyFromGh(key,callback){
 function pushKeyToGh(key,callback){
   var cfg=loadGhConfig();
   if(!cfg.token){if(callback)callback(false,'no token');return;}
+  var token=cfg.token.trim();
+  if(!token){if(callback)callback(false,'empty token');return;}
   
   var val=localStorage.getItem(key);
   if(val===null){if(callback)callback(false,'no local data');return;}
@@ -373,10 +375,17 @@ function pushKeyToGh(key,callback){
   
   // First get the SHA of existing file (if any)
   fetch(url+'?ref='+cfg.branch,{
-    headers:{'Authorization':'token '+cfg.token,'Accept':'application/vnd.github.v3+json'}
+    headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
   }).then(function(r){
     if(r.status===404)return null; // file doesn't exist yet
-    if(!r.ok)throw new Error('GET failed: '+r.status);
+    if(!r.ok){
+      // Try to get error body for better diagnostics
+      return r.text().then(function(txt){
+        var errMsg='GET failed: '+r.status;
+        try{var j=JSON.parse(txt);if(j&&j.message)errMsg+=' - '+j.message;}catch(e){}
+        throw new Error(errMsg);
+      });
+    }
     return r.json();
   }).then(function(existing){
     var payload={
@@ -392,14 +401,20 @@ function pushKeyToGh(key,callback){
     return fetch(url,{
       method:'PUT',
       headers:{
-        'Authorization':'token '+cfg.token,
+        'Authorization':'token '+token,
         'Accept':'application/vnd.github.v3+json',
         'Content-Type':'application/json'
       },
       body:JSON.stringify(payload)
     });
   }).then(function(r){
-    if(!r.ok)throw new Error('PUT failed: '+r.status);
+    if(!r.ok){
+      return r.text().then(function(txt){
+        var errMsg='PUT failed: '+r.status;
+        try{var j=JSON.parse(txt);if(j&&j.message)errMsg+=' - '+j.message;}catch(e){}
+        throw new Error(errMsg);
+      });
+    }
     return r.json();
   }).then(function(result){
     if(result&&result.content&&result.content.sha){
@@ -1345,9 +1360,14 @@ createApp({setup(){
     var idx=relics.value.findIndex(function(x){return x.id===r.id;});
     if(idx>=0){
       relics.value.splice(idx,1);
-      if(r.userUploaded){var saved=loadUserRelics();var sIdx=saved.findIndex(function(x){return x.id===r.id;});if(sIdx>=0){saved.splice(sIdx,1);saveUserRelics(saved);}}
+      // Always try to remove from userRelics (not just when userUploaded flag is set)
+      try{
+        var saved=loadUserRelics();
+        var sIdx=saved.findIndex(function(x){return x.id===r.id;});
+        if(sIdx>=0){saved.splice(sIdx,1);saveUserRelics(saved);}
+      }catch(e){}
       deleteRelicOverride(r.id);
-      markRelicDeleted(r.id); // Mark as deleted for sync
+      markRelicDeleted(r.id); // Mark as deleted for sync (triggers syncToServer)
       alert('文物 '+r.id+' 已删除');
     }
   }
