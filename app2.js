@@ -491,7 +491,20 @@ function startAutoPull(){
 
 // Initialize: try to pull on startup (best-effort)
 try{
-  syncAllFromServer(function(){});
+  syncAllFromServer(function(){
+    // Refresh UI after initial sync so server data shows up
+    // _onDataSynced is set later by Vue setup, so we use a small delay + retry
+    var _tries=0;
+    var _tryRefresh=function(){
+      if(_onDataSynced){
+        try{_onDataSynced();}catch(e){}
+      }else if(_tries<10){
+        _tries++;
+        setTimeout(_tryRefresh,200);
+      }
+    };
+    _tryRefresh();
+  });
   startAutoPull();
 }catch(e){}
 
