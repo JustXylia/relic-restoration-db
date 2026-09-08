@@ -302,10 +302,37 @@ function mergeServerData(key, serverData){
       }
       return merged;
     }
-    // For other objects (relicOverrides): local values take precedence
+    // For relicOverrides: deep-merge per relic, server takes priority for same field
+    // This ensures changes made on other devices propagate correctly
     var merged={};
-    for(var sk in serverData){merged[sk]=serverData[sk];}
-    for(var lk in localData){merged[lk]=localData[lk];}
+    // Start with server data
+    for(var sk in serverData){
+      if(typeof serverData[sk]==='object'&&serverData[sk]!==null&&!Array.isArray(serverData[sk])){
+        merged[sk]={};
+        for(var sf in serverData[sk]){merged[sk][sf]=serverData[sk][sf];}
+      }else{
+        merged[sk]=serverData[sk];
+      }
+    }
+    // Merge local data — only add fields that server doesn't have
+    for(var lk in localData){
+      if(!merged[lk]){
+        // Local has a relic override that server doesn't — add it
+        if(typeof localData[lk]==='object'&&localData[lk]!==null&&!Array.isArray(localData[lk])){
+          merged[lk]={};
+          for(var lf in localData[lk]){merged[lk][lf]=localData[lk][lf];}
+        }else{
+          merged[lk]=localData[lk];
+        }
+      }else if(typeof localData[lk]==='object'&&localData[lk]!==null&&!Array.isArray(localData[lk])&&typeof merged[lk]==='object'){
+        // Both have this relic — merge field by field, local only fills in missing fields
+        for(var lf2 in localData[lk]){
+          if(merged[lk][lf2]===undefined){
+            merged[lk][lf2]=localData[lk][lf2];
+          }
+        }
+      }
+    }
     return merged;
   }
   
@@ -1042,7 +1069,17 @@ createApp({setup(){
         var _ov=loadRelicOverrides();
         var _ur=loadUserRelics();
         var _gr=genRelics();
-        var _all=_ur.concat(_gr);
+        // Deduplicate: user-uploaded takes precedence over generated
+        var _uids={};
+        _ur.forEach(function(r){_uids[r.id]=true;});
+        var _fg=_gr.filter(function(r){return !_uids[r.id];});
+        // Filter out deleted relics (tombstone)
+        var _dl=loadDeletedRelics();
+        var _dm={};
+        _dl.forEach(function(id){_dm[id]=true;});
+        var _fur=_ur.filter(function(r){return !_dm[r.id];});
+        var _ffg=_fg.filter(function(r){return !_dm[r.id];});
+        var _all=_fur.concat(_ffg);
         _all.forEach(function(r){var o=_ov[r.id];if(o){for(var k in o){r[k]=o[k];}}});
         relics.value.splice(0,relics.value.length);
         _all.forEach(function(r){relics.value.push(r);});
