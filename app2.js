@@ -218,6 +218,7 @@ var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_
 var _syncTimer=null;
 var _ghCache={}; // cache file SHAs for faster updates
 var _autoPullTimer=null;
+var _onDataSynced=null; // callback to refresh UI after auto-pull
 
 function loadGhConfig(){
   try{
@@ -454,7 +455,10 @@ function syncAllFromServer(callback){
 function startAutoPull(){
   if(_autoPullTimer)clearInterval(_autoPullTimer);
   _autoPullTimer=setInterval(function(){
-    syncAllFromServer(function(){});
+    syncAllFromServer(function(){
+      // Refresh UI after auto-pull so new/deleted data shows up
+      if(_onDataSynced)try{_onDataSynced();}catch(e){}
+    });
   },30000);
 }
 
@@ -1994,35 +1998,43 @@ createApp({setup(){
     });
   }
 
+  // Rebuild reactive relic list from localStorage (no server fetch)
+  function rebuildRelicList(){
+    try{
+      var _o=loadRelicOverrides();
+      var _ur2=loadUserRelics();
+      var _gr2=genRelics();
+      // Deduplicate: user-uploaded takes precedence over generated
+      var _uids={};
+      _ur2.forEach(function(r){_uids[r.id]=true;});
+      var _fg2=_gr2.filter(function(r){return !_uids[r.id];});
+      // Filter out deleted relics (tombstone)
+      var _dl2=loadDeletedRelics();
+      var _dm2={};
+      _dl2.forEach(function(id){_dm2[id]=true;});
+      var _fur2=_ur2.filter(function(r){return !_dm2[r.id];});
+      var _ffg2=_fg2.filter(function(r){return !_dm2[r.id];});
+      var _all2=_fur2.concat(_ffg2);
+      _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
+      relics.value.splice(0,relics.value.length);
+      _all2.forEach(function(r){relics.value.push(r);});
+      var _su3=loadAllUsers();
+      if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
+      var _sl3=loadLibs();
+      if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
+      resolveAllIdbImgs();
+    }catch(e){}
+  }
+
   // Manual refresh function — pull latest data from server and update UI
   function refreshFromServer(){
     syncAllFromServer(function(){
-      try{
-        var _o=loadRelicOverrides();
-        var _ur2=loadUserRelics();
-        var _gr2=genRelics();
-        // Deduplicate: user-uploaded takes precedence over generated
-        var _uids={};
-        _ur2.forEach(function(r){_uids[r.id]=true;});
-        var _fg2=_gr2.filter(function(r){return !_uids[r.id];});
-        // Filter out deleted relics (tombstone)
-        var _dl2=loadDeletedRelics();
-        var _dm2={};
-        _dl2.forEach(function(id){_dm2[id]=true;});
-        var _fur2=_ur2.filter(function(r){return !_dm2[r.id];});
-        var _ffg2=_fg2.filter(function(r){return !_dm2[r.id];});
-        var _all2=_fur2.concat(_ffg2);
-        _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
-        relics.value.splice(0,relics.value.length);
-        _all2.forEach(function(r){relics.value.push(r);});
-        var _su3=loadAllUsers();
-        if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
-        var _sl3=loadLibs();
-        if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
-        resolveAllIdbImgs();
-      }catch(e){}
+      rebuildRelicList();
     });
   }
+
+  // Register for auto-pull UI refresh
+  _onDataSynced=rebuildRelicList;
 
   return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
     page,pageTitle,nav,types,libs,relics,allUsers,
