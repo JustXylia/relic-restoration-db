@@ -210,8 +210,15 @@ function mergeServerData(key, serverData){
     var map={};
     localData.forEach(function(item){if(item&&item[idKey])map[item[idKey]]=item;});
     serverData.forEach(function(item){
-      if(item&&item[idKey]&&!map[item[idKey]]){
-        map[item[idKey]]=item;
+      if(item&&item[idKey]){
+        var ex=map[item[idKey]];
+        if(!ex){
+          map[item[idKey]]=item;
+        }else if(key===USER_RELICS_KEY){
+          var exT=ex.lastUpdate||ex.uploadTime||'';
+          var svT=item.lastUpdate||item.uploadTime||'';
+          if(svT>exT)map[item[idKey]]=item;
+        }
       }
     });
     return Object.values(map);
@@ -423,19 +430,7 @@ function startAutoPull(){
 
 // Initialize: try to pull on startup (best-effort)
 try{
-  syncAllFromServer(function(){
-    var _tries=0;
-    var _tryRefresh=function(){
-      if(_onDataSynced){
-        try{_onDataSynced();}catch(e){}
-      }else if(_tries<10){
-        _tries++;
-        setTimeout(_tryRefresh,200);
-      }
-    };
-    _tryRefresh();
-  });
-  startAutoPull();
+  syncAllFromServer(function(){});
 }catch(e){}
 
 function saveUserRelics(relics){
@@ -871,9 +866,17 @@ createApp({setup(){
       var _o=loadRelicOverrides();
       var _ur=loadUserRelics();
       var _gr=genRelics();
-      var _all=_ur.concat(_gr);
       var _deleted=loadDeletedRelics();
-      _all=_all.filter(function(r){return _deleted.indexOf(r.id)<0;});
+      var _urIds={};
+      _ur.forEach(function(r){if(r.id)_urIds[r.id]=true;});
+      var _all=_ur.concat(_gr.filter(function(r){return !_urIds[r.id];}));
+      _all=_all.filter(function(r){return r.id&&_deleted.indexOf(r.id)<0;});
+      var _seen={};
+      _all=_all.filter(function(r){
+        if(_seen[r.id])return false;
+        _seen[r.id]=true;
+        return true;
+      });
       _all.forEach(function(r){var ov=_o[r.id];if(ov){for(var kk in ov){r[kk]=ov[kk];}}});
       relics.value.splice(0,relics.value.length);
       _all.forEach(function(r){relics.value.push(r);});
@@ -1035,7 +1038,16 @@ createApp({setup(){
   var libs=ref(_savedLibs?_savedLibs.concat(_defaultLibs.filter(function(d){return !_savedLibs.find(function(s){return s.id===d.id;});})):_defaultLibs);
   var _generatedRelics=genRelics();
   var _userRelics=loadUserRelics();
-  var relics=ref(_userRelics.concat(_generatedRelics));
+  var _urIdSet={};
+  _userRelics.forEach(function(r){if(r.id)_urIdSet[r.id]=true;});
+  var _initAll=_userRelics.concat(_generatedRelics.filter(function(r){return !_urIdSet[r.id];}));
+  var _initSeen={};
+  _initAll=_initAll.filter(function(r){
+    if(_initSeen[r.id])return false;
+    _initSeen[r.id]=true;
+    return true;
+  });
+  var relics=ref(_initAll);
 
   // Apply persisted overrides to generated relics (status, progress, restorer, images, etc.)
   var _overrides=loadRelicOverrides();
@@ -1259,15 +1271,15 @@ createApp({setup(){
   function doUpload(){if(!upForm.library){alert('请选择专题库');return;}
     var lib=libs.value.find(function(l){return l.name===upForm.library;});
     var prefix=lib?lib.prefix:'GEN';
-    var libCount=relics.value.filter(function(r){return r.library===upForm.library;}).length+1;
-    var seq=String(libCount).padStart(5,'0');
+    var seqNum=getNextSeq(prefix);
+    var seq=String(seqNum).padStart(5,'0');
     var newId=prefix+'-2026-'+seq;
     var hasGlb=_pendingGlbBlob?true:false;
     var hasImg=_pendingImgBlob?true:false;
     var imgIdbKey=hasImg?'idb://imgFiles/'+newId:'';
     var imgCloudPath=hasImg?('img/stages/'+newId+'.jpg'):'';
     var glbCloudPath=hasGlb?('img/3d/'+newId+'_unrestored.glb'):'';
-    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgCloudPath:relicImg(upForm.type,libCount),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?glbCloudPath:'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
+    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgCloudPath:relicImg(upForm.type,seqNum),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?glbCloudPath:'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
     var savePromises=[];
     if(hasGlb){
       savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
@@ -1948,18 +1960,11 @@ createApp({setup(){
   function refreshFromServer(){
     syncAllFromServer(function(){
       try{
-        var _o=loadRelicOverrides();
-        var _ur2=loadUserRelics();
-        var _gr2=genRelics();
-        var _all2=_ur2.concat(_gr2);
-        _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
-        relics.value.splice(0,relics.value.length);
-        _all2.forEach(function(r){relics.value.push(r);});
+        rebuildRelicList();
         var _su3=loadAllUsers();
         if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
         var _sl3=loadLibs();
         if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
-        resolveAllIdbImgs();
       }catch(e){}
     });
   }
