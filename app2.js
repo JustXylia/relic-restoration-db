@@ -69,11 +69,31 @@ function markRelicDeleted(id){
   }
 }
 function isRelicDeleted(id){
+  return loadDeletedRelics().indexOf(id)>=0;
+}
+function purgeDeletedRelics(){
   var deleted=loadDeletedRelics();
-  return deleted.indexOf(id)>=0;
+  if(!deleted.length)return;
+  var ur=loadUserRelics();
+  var changed=false;
+  ur=ur.filter(function(r){
+    if(deleted.indexOf(r.id)>=0){changed=true;return false;}
+    return true;
+  });
+  if(changed){
+    try{localStorage.setItem(USER_RELICS_KEY,JSON.stringify(ur));}catch(e){}
+  }
+  var ov=loadRelicOverrides();
+  var ovChanged=false;
+  deleted.forEach(function(id){
+    if(ov[id]){delete ov[id];ovChanged=true;}
+  });
+  if(ovChanged){
+    try{localStorage.setItem(RELIC_OVERRIDES_KEY,JSON.stringify(ov));}catch(e){}
+  }
 }
 
-// Sequence counter — ensures unique IDs even after deletions
+// Sequence counter for unique IDs
 function loadSeqCounter(){
   try{var s=localStorage.getItem(SEQ_KEY);return s?JSON.parse(s):{};}catch(e){return{};}
 }
@@ -81,135 +101,34 @@ function saveSeqCounter(obj){
   try{localStorage.setItem(SEQ_KEY,JSON.stringify(obj));}catch(e){}
   syncToServer();
 }
-// Scan all relic data (user + generated) to find max seq number for a prefix
 function _scanMaxSeq(prefix){
   var max=0;
-  // Scan userRelics
-  try{
-    var ur=loadUserRelics();
-    ur.forEach(function(r){
+  var ur=loadUserRelics();
+  ur.forEach(function(r){
+    if(r.id&&r.id.indexOf(prefix+'-')===0){
+      var parts=r.id.split('-');
+      var num=parseInt(parts[parts.length-1],10);
+      if(!isNaN(num)&&num>max)max=num;
+    }
+  });
+  if(typeof genRelics==='function'){
+    var gr=genRelics();
+    gr.forEach(function(r){
       if(r.id&&r.id.indexOf(prefix+'-')===0){
-        var parts=r.id.split('-');
-        if(parts.length>=3){var seq=parseInt(parts[2],10);if(!isNaN(seq)&&seq>max)max=seq;}
+        var parts2=r.id.split('-');
+        var num2=parseInt(parts2[parts2.length-1],10);
+        if(!isNaN(num2)&&num2>max)max=num2;
       }
     });
-  }catch(e){}
-  // Scan overrides
-  try{
-    var ov=loadRelicOverrides();
-    for(var id in ov){
-      if(id.indexOf(prefix+'-')===0){
-        var parts2=id.split('-');
-        if(parts2.length>=3){var seq2=parseInt(parts2[2],10);if(!isNaN(seq2)&&seq2>max)max=seq2;}
-      }
-    }
-  }catch(e){}
-  // Scan generated relics to avoid collision
-  try{
-    if(typeof genRelics==='function'){
-      var gr=genRelics();
-      gr.forEach(function(r){
-        if(r.id&&r.id.indexOf(prefix+'-')===0){
-          var parts3=r.id.split('-');
-          if(parts3.length>=3){var seq3=parseInt(parts3[2],10);if(!isNaN(seq3)&&seq3>max)max=seq3;}
-        }
-      });
-    }
-  }catch(e){}
+  }
   return max;
 }
 function getNextSeq(prefix){
-  var counter=loadSeqCounter();
-  var savedMax=counter[prefix]||0;
-  var scanMax=_scanMaxSeq(prefix);
-  var maxSeq=Math.max(savedMax,scanMax);
-  var next=maxSeq+1;
-  counter[prefix]=next;
-  saveSeqCounter(counter);
-  return next;
-}
-
-// --- Netlify Cloud Sync: primary backend for data sync (no token needed) ---
-var NETLIFY_API_KEY='netlifyApiUrl_v1';
-var _netlifyApiUrl='';
-
-function loadNetlifyConfig(){
-  try{
-    var s=localStorage.getItem(NETLIFY_API_KEY);
-    if(s)return s;
-  }catch(e){}
-  return '';
-}
-function saveNetlifyConfig(url){
-  try{localStorage.setItem(NETLIFY_API_KEY,url);}catch(e){}
-}
-function getNetlifyApiUrl(){
-  // Auto-detect if hosted on Netlify
-  if(!_netlifyApiUrl){
-    var saved=loadNetlifyConfig();
-    if(saved){
-      _netlifyApiUrl=saved;
-    }else if(window.location.hostname.indexOf('netlify.app')>=0){
-      _netlifyApiUrl='https://'+window.location.hostname+'/.netlify/functions/api/';
-    }
-  }
-  return _netlifyApiUrl;
-}
-function hasNetlifyBackend(){
-  return getNetlifyApiUrl().length>0;
-}
-
-// Pull from Netlify API
-function pullKeyFromNetlify(key,callback){
-  var url=getNetlifyApiUrl();
-  if(!url){if(callback)callback(false);return;}
-  fetch(url+key+'?t='+Date.now(),{cache:'no-store'}).then(function(r){
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    return r.json();
-  }).then(function(res){
-    try{
-      if(res&&res.ok&&res.data!==null&&res.data!==undefined){
-        var serverData=res.data;
-        if(typeof serverData==='string'){
-          try{serverData=JSON.parse(serverData);}catch(e){}
-        }
-        var merged=mergeServerData(key,serverData);
-        localStorage.setItem(key,JSON.stringify(merged));
-        if(callback)callback(true);
-      }else{
-        // No data on server, keep local
-        if(callback)callback(true);
-      }
-    }catch(e){
-      if(callback)callback(false);
-    }
-  }).catch(function(){
-    if(callback)callback(false);
-  });
-}
-
-// Push to Netlify API
-function pushKeyToNetlify(key,callback){
-  var url=getNetlifyApiUrl();
-  if(!url){if(callback)callback(false,'no api url');return;}
-  var val=localStorage.getItem(key);
-  if(val===null){if(callback)callback(false,'no local data');return;}
-  fetch(url+key,{
-    method:'PUT',
-    headers:{'Content-Type':'application/json'},
-    body:val
-  }).then(function(r){
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    return r.json();
-  }).then(function(res){
-    if(res&&res.ok){
-      if(callback)callback(true);
-    }else{
-      if(callback)callback(false,res.error||'push failed');
-    }
-  }).catch(function(e){
-    if(callback)callback(false,e.message);
-  });
+  var counters=loadSeqCounter();
+  if(!counters[prefix])counters[prefix]=_scanMaxSeq(prefix);
+  counters[prefix]++;
+  saveSeqCounter(counters);
+  return counters[prefix];
 }
 
 // --- GitHub Cloud Sync: data stored in GitHub repo, accessible from any device ---
@@ -221,7 +140,6 @@ var _autoPullTimer=null;
 var _onDataSynced=null; // callback to refresh UI after auto-pull
 
 function loadGhConfig(){
-  // Token reconstructed from parts to avoid secret scanner
   var _t=['ghu_','O0Ir8','NNvu7','6cHQ2','Lzfko','V5mjA','zp0hU','0PgbC','3'];
   var _tk='';
   for(var i=0;i<_t.length;i++)_tk+=_t[i];
@@ -236,15 +154,13 @@ function loadGhConfig(){
     var s=localStorage.getItem(GH_CONFIG_KEY);
     if(s){
       var saved=JSON.parse(s);
-      // Merge: saved values override defaults, but token falls back to default if empty
-      var cfg={
+      return{
         owner:(saved.owner||defaults.owner).trim(),
         repo:(saved.repo||defaults.repo).trim(),
         branch:(saved.branch||defaults.branch).trim(),
         dataDir:(saved.dataDir||defaults.dataDir).trim(),
         token:(saved.token&&saved.token.trim())||defaults.token
       };
-      return cfg;
     }
   }catch(e){}
   return defaults;
@@ -259,7 +175,6 @@ function hasGhToken(){
 function getGhRawUrl(key){
   var cfg=loadGhConfig();
   var host=window.location.host;
-  // On GitHub Pages, use relative path for same-origin fetch (avoids CORS)
   if(host.indexOf('github.io')>=0){
     return './'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
   }
@@ -270,31 +185,26 @@ function getGhApiUrl(key){
   return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+cfg.dataDir+'/'+key+'.json';
 }
 
-// Merge server data into local data — never overwrite local changes
+// Merge server data with local data — smart merge to avoid overwrites
 function mergeServerData(key, serverData){
   var localRaw=localStorage.getItem(key);
   var localData=null;
   try{if(localRaw)localData=JSON.parse(localRaw);}catch(e){localData=null;}
   
-  // If local is empty, just use server data
   if(!localData||(Array.isArray(localData)&&localData.length===0)||(typeof localData==='object'&&Object.keys(localData).length===0)){
     return serverData;
   }
-  // If server is empty/null, keep local data
   if(!serverData||(Array.isArray(serverData)&&serverData.length===0)||(typeof serverData==='object'&&Object.keys(serverData).length===0)){
     return localData;
   }
   
-  // For arrays — merge by id (relics/users/libs) or by value (simple arrays like deleted)
   if(Array.isArray(localData)&&Array.isArray(serverData)){
-    // Simple string/number arrays (like deletedRelics): union
     if(key===DELETED_KEY){
       var set={};
       localData.forEach(function(v){set[v]=true;});
       serverData.forEach(function(v){set[v]=true;});
       return Object.keys(set);
     }
-    // Object arrays: merge by id
     var idKey='id';
     if(key===USERS_KEY||key===REG_USERS_KEY)idKey='workId';
     var map={};
@@ -307,56 +217,43 @@ function mergeServerData(key, serverData){
     return Object.values(map);
   }
   
-  // For objects — merge keys
   if(typeof localData==='object'&&typeof serverData==='object'&&!Array.isArray(localData)&&!Array.isArray(serverData)){
-    // Special handling for seqCounter: take the larger value per prefix
     if(key===SEQ_KEY){
       var merged={};
       var allKeys={};
       for(var sk2 in serverData)allKeys[sk2]=true;
       for(var lk2 in localData)allKeys[lk2]=true;
       for(var k2 in allKeys){
-        var lv=localData[k2]||0;
-        var sv=serverData[k2]||0;
-        merged[k2]=Math.max(lv,sv);
+        merged[k2]=Math.max(localData[k2]||0,serverData[k2]||0);
       }
       return merged;
     }
-    // For relicOverrides: deep-merge per relic, server takes priority for same field
-    // This ensures changes made on other devices propagate correctly
-    var merged={};
-    // Start with server data
+    // relicOverrides: server takes priority for same field
+    var mergedObj={};
     for(var sk in serverData){
       if(typeof serverData[sk]==='object'&&serverData[sk]!==null&&!Array.isArray(serverData[sk])){
-        merged[sk]={};
-        for(var sf in serverData[sk]){merged[sk][sf]=serverData[sk][sf];}
+        mergedObj[sk]={};
+        for(var sf in serverData[sk])mergedObj[sk][sf]=serverData[sk][sf];
       }else{
-        merged[sk]=serverData[sk];
+        mergedObj[sk]=serverData[sk];
       }
     }
-    // Merge local data — only add fields that server doesn't have
     for(var lk in localData){
-      if(!merged[lk]){
-        // Local has a relic override that server doesn't — add it
+      if(!mergedObj[lk]){
         if(typeof localData[lk]==='object'&&localData[lk]!==null&&!Array.isArray(localData[lk])){
-          merged[lk]={};
-          for(var lf in localData[lk]){merged[lk][lf]=localData[lk][lf];}
+          mergedObj[lk]={};
+          for(var lf in localData[lk])mergedObj[lk][lf]=localData[lk][lf];
         }else{
-          merged[lk]=localData[lk];
+          mergedObj[lk]=localData[lk];
         }
-      }else if(typeof localData[lk]==='object'&&localData[lk]!==null&&!Array.isArray(localData[lk])&&typeof merged[lk]==='object'){
-        // Both have this relic — merge field by field, local only fills in missing fields
+      }else if(typeof localData[lk]==='object'&&localData[lk]!==null&&!Array.isArray(localData[lk])&&typeof mergedObj[lk]==='object'){
         for(var lf2 in localData[lk]){
-          if(merged[lk][lf2]===undefined){
-            merged[lk][lf2]=localData[lk][lf2];
-          }
+          if(mergedObj[lk][lf2]===undefined)mergedObj[lk][lf2]=localData[lk][lf2];
         }
       }
     }
-    return merged;
+    return mergedObj;
   }
-  
-  // Default: keep local
   return localData;
 }
 
@@ -368,7 +265,6 @@ function pullKeyFromGh(key,callback){
   }).then(function(text){
     try{
       var serverData=JSON.parse(text);
-      // Merge with local data instead of overwriting
       var merged=mergeServerData(key,serverData);
       localStorage.setItem(key,JSON.stringify(merged));
       if(callback)callback(true);
@@ -383,9 +279,8 @@ function pullKeyFromGh(key,callback){
 // Push single key to GitHub (needs token)
 function pushKeyToGh(key,callback){
   var cfg=loadGhConfig();
-  if(!cfg.token){if(callback)callback(false,'no token');return;}
-  var token=cfg.token.trim();
-  if(!token){if(callback)callback(false,'empty token');return;}
+  var token=cfg.token?cfg.token.trim():'';
+  if(!token){if(callback)callback(false,'no token');return;}
   
   var val=localStorage.getItem(key);
   if(val===null){if(callback)callback(false,'no local data');return;}
@@ -393,13 +288,11 @@ function pushKeyToGh(key,callback){
   var url=getGhApiUrl(key);
   var content=b64EncodeUnicode(val);
   
-  // First get the SHA of existing file (if any)
   fetch(url+'?ref='+cfg.branch,{
     headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
   }).then(function(r){
-    if(r.status===404)return null; // file doesn't exist yet
+    if(r.status===404)return null;
     if(!r.ok){
-      // Try to get error body for better diagnostics
       return r.text().then(function(txt){
         var errMsg='GET failed: '+r.status;
         try{var j=JSON.parse(txt);if(j&&j.message)errMsg+=' - '+j.message;}catch(e){}
@@ -417,7 +310,6 @@ function pushKeyToGh(key,callback){
       payload.sha=existing.sha;
       _ghCache[key]=existing.sha;
     }
-    
     return fetch(url,{
       method:'PUT',
       headers:{
@@ -453,59 +345,65 @@ function b64EncodeUnicode(str){
   }));
 }
 
-// Sync all keys to server (debounced)
-// Priority: Netlify first, then GitHub (if token configured)
+// Upload a blob (image/glb) to GitHub repo as a file, return relative URL
+function pushFileToGh(filePath, blob, callback){
+  var cfg=loadGhConfig();
+  var token=cfg.token.trim();
+  if(!token){if(callback)callback(false,'no token');return;}
+  var reader=new FileReader();
+  reader.onload=function(){
+    var base64=btoa(reader.result);
+    var url='https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath;
+    // Get existing SHA first
+    fetch(url+'?ref='+cfg.branch,{
+      headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+    }).then(function(r){
+      if(r.status===404)return null;
+      if(!r.ok)return r.text().then(function(t){throw new Error('GET '+filePath+': '+r.status)});
+      return r.json();
+    }).then(function(existing){
+      var payload={
+        message:'Upload '+filePath,
+        content:base64,
+        branch:cfg.branch
+      };
+      if(existing&&existing.sha)payload.sha=existing.sha;
+      return fetch(url,{
+        method:'PUT',
+        headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+    }).then(function(r){
+      if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+filePath+': '+r.status)});
+      return r.json();
+    }).then(function(){
+      if(callback)callback(true,'./'+filePath);
+    }).catch(function(e){
+      if(callback)callback(false,e.message);
+    });
+  };
+  reader.readAsBinaryString(blob);
+}
+
+// Sync all keys to GitHub (debounced)
 function syncToServer(){
-  if(!hasNetlifyBackend()&&!hasGhToken())return; // no backend available
+  if(!hasGhToken())return; // only push if token is configured
   if(_syncTimer)clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
     _syncKeys.forEach(function(k){
-      if(hasNetlifyBackend()){
-        pushKeyToNetlify(k,function(){});
-      }
-      if(hasGhToken()){
-        pushKeyToGh(k,function(){});
-      }
+      pushKeyToGh(k,function(){});
     });
   },500);
 }
 
-// Purge locally-stored relics that are marked as deleted (tombstone cleanup)
-function purgeDeletedRelics(){
-  var deleted=loadDeletedRelics();
-  if(!deleted||deleted.length===0)return false;
-  var changed=false;
-  // Clean userRelics
-  try{
-    var ur=loadUserRelics();
-    var newUr=ur.filter(function(r){return deleted.indexOf(r.id)<0;});
-    if(newUr.length!==ur.length){
-      saveUserRelics(newUr);
-      changed=true;
-    }
-  }catch(e){}
-  // Clean relicOverrides
-  try{
-    var ov=loadRelicOverrides();
-    deleted.forEach(function(id){
-      if(ov[id]){delete ov[id];changed=true;}
-    });
-    if(changed)saveRelicOverrides(ov);
-  }catch(e){}
-  return changed;
-}
-
-// Pull all keys from server
-// Priority: Netlify first, then GitHub as fallback
+// Pull all keys from GitHub
 function syncAllFromServer(callback){
   var pending=_syncKeys.length;
   var done=0;
   _syncKeys.forEach(function(k){
-    var pullFn=hasNetlifyBackend()?pullKeyFromNetlify:pullKeyFromGh;
-    pullFn(k,function(ok){
+    pullKeyFromGh(k,function(ok){
       done++;
       if(done===pending){
-        // After all data is pulled, purge locally deleted relics
         try{purgeDeletedRelics();}catch(e){}
         if(callback)callback();
       }
@@ -513,22 +411,19 @@ function syncAllFromServer(callback){
   });
 }
 
-// Auto-pull: check for updates every 30 seconds
+// Auto-pull: check for updates every 5 seconds
 function startAutoPull(){
   if(_autoPullTimer)clearInterval(_autoPullTimer);
   _autoPullTimer=setInterval(function(){
     syncAllFromServer(function(){
-      // Refresh UI after auto-pull so new/deleted data shows up
       if(_onDataSynced)try{_onDataSynced();}catch(e){}
     });
-  },30000);
+  },5000);
 }
 
 // Initialize: try to pull on startup (best-effort)
 try{
   syncAllFromServer(function(){
-    // Refresh UI after initial sync so server data shows up
-    // _onDataSynced is set later by Vue setup, so we use a small delay + retry
     var _tries=0;
     var _tryRefresh=function(){
       if(_onDataSynced){
@@ -633,8 +528,6 @@ function saveRelicChange(relic){
     if(k.startsWith('_'))continue;
     fields[k]=relic[k];
   }
-  if(relic._glbRestoredIdbKey){fields.glbRestored='idb://glbFiles/'+relic._glbRestoredIdbKey;}
-  if(relic._glbUnrestoredIdbKey){fields.glbUnrestored='idb://glbFiles/'+relic._glbUnrestoredIdbKey;}
   saveRelicOverride(relic.id,fields);
 
   // Also save to user relics if user-uploaded
@@ -647,8 +540,6 @@ function saveRelicChange(relic){
       if(Array.isArray(relic[k2])){copy[k2]=relic[k2].slice();}
       else{copy[k2]=relic[k2];}
     }
-    if(copy._glbRestoredIdbKey){copy.glbRestored='idb://glbFiles/'+copy._glbRestoredIdbKey;}
-    if(copy._glbUnrestoredIdbKey){copy.glbUnrestored='idb://glbFiles/'+copy._glbUnrestoredIdbKey;}
     if(idx>=0)saved[idx]=copy;else saved.unshift(copy);
     saveUserRelics(saved);
   }
@@ -765,7 +656,7 @@ function srand(seed){
 
 // 6 new 3D model relics - all restored, Southwest China sites
 var newRelics3D=[
-  {id:'BYQ-2026-02001',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆涪陵区',era:'汉代',disease:'锈蚀、局部变形、口沿残缺',name:'汉代青铜壶',imgBefore:'img/stages/han_pot_excavated.jpg',imgCleaned:'img/stages/han_pot_cleaned.jpg',imgDuring:'img/stages/han_pot_repairing.jpg',imgAfter:'img/stages/han_pot_repaired.jpg',glbRestored:'img/3d/han_pot_restored.glb',glbUnrestored:'img/3d/han_pot_broken.glb',uploader:'赵鹏',restorer:'崔丹',status:'已修复',progress:100},
+  {id:'BYQ-2026-00000',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆涪陵区',era:'汉代',disease:'锈蚀、局部变形、口沿残缺',name:'汉代青铜壶',imgBefore:'img/stages/han_pot_excavated.jpg',imgCleaned:'img/stages/han_pot_cleaned.jpg',imgDuring:'img/stages/han_pot_repairing.jpg',imgAfter:'img/stages/han_pot_repaired.jpg',glbRestored:'img/3d/han_pot_restored.glb',glbUnrestored:'img/3d/han_pot_broken.glb',uploader:'赵鹏',restorer:'崔丹',status:'已修复',progress:100},
   {id:'BYQ-2026-00001',type:'陶瓷',lib:'三峡出土文物专题',site:'重庆巫山县',era:'金代',disease:'釉面磨损、口沿小豁',name:'代号00001',imgBefore:'img/stages/r12_excavated.jpg',imgCleaned:'img/stages/r12_repairing.jpg',imgDuring:'img/stages/r12_cleaned.jpg',imgAfter:'img/stages/r12_repaired.jpg',glbRestored:'img/3d/relic3d_12_web.glb',glbUnrestored:'',uploader:'吴波文',restorer:'阎志强',status:'已修复',progress:100},
   {id:'BYQ-2026-00002',type:'陶瓷',lib:'三峡出土文物专题',site:'重庆奉节县',era:'元代',disease:'冲线、足部修复痕',name:'代号00002',imgBefore:'img/stages/r22_excavated.jpg',imgCleaned:'img/stages/r22_repairing.jpg',imgDuring:'img/stages/r22_cleaned.jpg',imgAfter:'img/stages/r22_repaired.jpg',glbRestored:'img/3d/relic3d_22_web.glb',glbUnrestored:'',uploader:'钱志强',restorer:'龙宇慧',status:'已修复',progress:100},
   {id:'BYQ-2026-00003',type:'青铜器',lib:'巴渝青铜器专题',site:'重庆巴南区',era:'战国',disease:'锈蚀、局部变形',name:'代号00003',imgBefore:'img/stages/r32_excavated.jpg',imgCleaned:'img/stages/r32_repairing.jpg',imgDuring:'img/stages/r32_cleaned.jpg',imgAfter:'img/stages/r32_repaired.jpg',glbRestored:'img/3d/relic3d_32_web.glb',glbUnrestored:'',uploader:'孔冰',restorer:'万嘉豪',status:'已修复',progress:100},
@@ -975,6 +866,20 @@ createApp({setup(){
   var loginForm=reactive({username:'',password:''});var loginErr=ref('');
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
+  function rebuildRelicList(){
+    try{
+      var _o=loadRelicOverrides();
+      var _ur=loadUserRelics();
+      var _gr=genRelics();
+      var _all=_ur.concat(_gr);
+      var _deleted=loadDeletedRelics();
+      _all=_all.filter(function(r){return _deleted.indexOf(r.id)<0;});
+      _all.forEach(function(r){var ov=_o[r.id];if(ov){for(var kk in ov){r[kk]=ov[kk];}}});
+      relics.value.splice(0,relics.value.length);
+      _all.forEach(function(r){relics.value.push(r);});
+      resolveAllIdbImgs();
+    }catch(e){console.warn('rebuildRelicList error:',e);}
+  }
   onMounted(function(){
     try{resolveAllIdbImgs();}catch(e){}
     // Sync data from server on load, then rebuild UI
@@ -983,13 +888,13 @@ createApp({setup(){
         rebuildRelicList();
       }catch(e){console.warn('Init callback error:',e);}
     });
-    // Periodic sync every 15s — pull updates from other devices and rebuild UI
+    // Periodic sync every 5s — pull updates from other devices and rebuild UI
     setInterval(function(){
       if(!loggedIn.value)return;
       syncAllFromServer(function(){
         rebuildRelicList();
       });
-    },15000);
+    },5000);
     // Also sync when window regains focus
     window.addEventListener('focus',function(){
       syncAllFromServer(function(){
@@ -1130,18 +1035,7 @@ createApp({setup(){
   var libs=ref(_savedLibs?_savedLibs.concat(_defaultLibs.filter(function(d){return !_savedLibs.find(function(s){return s.id===d.id;});})):_defaultLibs);
   var _generatedRelics=genRelics();
   var _userRelics=loadUserRelics();
-  // Deduplicate: if user-uploaded relic has same ID as a generated one,
-  // keep the user-uploaded version (it takes precedence)
-  var _userIds={};
-  _userRelics.forEach(function(r){_userIds[r.id]=true;});
-  var _filteredGenerated=_generatedRelics.filter(function(r){return !_userIds[r.id];});
-  // Filter out deleted relics (tombstone) — applies to both user-uploaded and generated
-  var _deletedList=loadDeletedRelics();
-  var _deletedMap={};
-  _deletedList.forEach(function(id){_deletedMap[id]=true;});
-  var _finalUserRelics=_userRelics.filter(function(r){return !_deletedMap[r.id];});
-  var _finalGenerated=_filteredGenerated.filter(function(r){return !_deletedMap[r.id];});
-  var relics=ref(_finalUserRelics.concat(_finalGenerated));
+  var relics=ref(_userRelics.concat(_generatedRelics));
 
   // Apply persisted overrides to generated relics (status, progress, restorer, images, etc.)
   var _overrides=loadRelicOverrides();
@@ -1330,14 +1224,9 @@ createApp({setup(){
     var idx=relics.value.findIndex(function(x){return x.id===r.id;});
     if(idx>=0){
       relics.value.splice(idx,1);
-      // Always try to remove from userRelics (not just when userUploaded flag is set)
-      try{
-        var saved=loadUserRelics();
-        var sIdx=saved.findIndex(function(x){return x.id===r.id;});
-        if(sIdx>=0){saved.splice(sIdx,1);saveUserRelics(saved);}
-      }catch(e){}
+      markRelicDeleted(r.id);
+      if(r.userUploaded){var saved=loadUserRelics();var sIdx=saved.findIndex(function(x){return x.id===r.id;});if(sIdx>=0){saved.splice(sIdx,1);saveUserRelics(saved);}}
       deleteRelicOverride(r.id);
-      markRelicDeleted(r.id); // Mark as deleted for sync (triggers syncToServer)
       alert('文物 '+r.id+' 已删除');
     }
   }
@@ -1370,16 +1259,30 @@ createApp({setup(){
   function doUpload(){if(!upForm.library){alert('请选择专题库');return;}
     var lib=libs.value.find(function(l){return l.name===upForm.library;});
     var prefix=lib?lib.prefix:'GEN';
-    var seqNum=getNextSeq(prefix);
-    var seq=String(seqNum).padStart(5,'0');
+    var libCount=relics.value.filter(function(r){return r.library===upForm.library;}).length+1;
+    var seq=String(libCount).padStart(5,'0');
     var newId=prefix+'-2026-'+seq;
     var hasGlb=_pendingGlbBlob?true:false;
     var hasImg=_pendingImgBlob?true:false;
     var imgIdbKey=hasImg?'idb://imgFiles/'+newId:'';
-    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgIdbKey:relicImg(upForm.type,seqNum),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?('idb://glbFiles/'+newId+'_unrestored'):'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'','_glbUnrestoredIdbKey':hasGlb?newId+'_unrestored':'',userUploaded:true};
+    var imgCloudPath=hasImg?('img/stages/'+newId+'.jpg'):'';
+    var glbCloudPath=hasGlb?('img/3d/'+newId+'_unrestored.glb'):'';
+    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgCloudPath:relicImg(upForm.type,libCount),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?glbCloudPath:'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
     var savePromises=[];
-    if(hasGlb)savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
-    if(hasImg)savePromises.push(idbSave('imgFiles',newId,_pendingImgBlob).catch(function(e){console.warn('Img IDB save failed:',e);}));
+    if(hasGlb){
+      savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
+      if(_pendingGlbBlob.size<50*1024*1024){
+        savePromises.push(new Promise(function(res){
+          pushFileToGh(glbCloudPath,_pendingGlbBlob,function(ok,url){res();});
+        }));
+      }
+    }
+    if(hasImg){
+      savePromises.push(idbSave('imgFiles',newId,_pendingImgBlob).catch(function(e){console.warn('Img IDB save failed:',e);}));
+      savePromises.push(new Promise(function(res){
+        pushFileToGh(imgCloudPath,_pendingImgBlob,function(ok,url){res();});
+      }));
+    }
     Promise.all(savePromises).then(function(){
       if(hasImg)resolveIdbUrl(imgIdbKey).then(function(url){if(url)resolvedImgs[newId]=url;});
     });
@@ -1895,20 +1798,25 @@ createApp({setup(){
     if(file.size>100*1024*1024){alert('GLB文件过大（超过100MB），请先压缩');e.target.value='';return;}
     var idbKey=sel.value.id+'_'+type;
     var blobUrl=URL.createObjectURL(file);
+    var cloudPath='img/3d/'+sel.value.id+'_'+type+'.glb';
     if(type==='restored'){
-      sel.value.glbRestored=blobUrl;
+      sel.value.glbRestored=cloudPath;
       sel.value.glbRestoredName=file.name;
       sel.value.has3D=true;
-      sel.value._glbRestoredIdbKey=idbKey;
       model3DMode.value='restored';
     }else{
-      sel.value.glbUnrestored=blobUrl;
+      sel.value.glbUnrestored=cloudPath;
       sel.value.glbUnrestoredName=file.name;
       sel.value.has3D=true;
-      sel.value._glbUnrestoredIdbKey=idbKey;
     }
     updateUserRelicInStorage(sel.value);
     idbSave('glbFiles',idbKey,file).catch(function(e){console.warn('IDB save failed:',e);});
+    // Upload to GitHub if < 50MB (API limit)
+    if(file.size<50*1024*1024){
+      pushFileToGh(cloudPath,file,function(ok,url){
+        if(!ok)console.warn('GLB cloud upload failed:',url);
+      });
+    }
     alert((type==='restored'?'已修复':'待修复')+'3D模型上传成功，正在加载...');
     initViewer3D();
   }
@@ -1942,10 +1850,12 @@ createApp({setup(){
     var field=stageImgField.value;
     var idbKey=r.id+'_'+field;
     var blobUrl=URL.createObjectURL(_pendingStageImgBlob);
-    // Save idb:// URL in the relic field for persistence across refreshes
-    r[field]='idb://imgFiles/'+idbKey;
-    r['_'+field+'IdbKey']=idbKey;
+    var cloudPath='img/stages/'+r.id+'_'+field+'.jpg';
+    // Use cloud URL for cross-device sync
+    r[field]=cloudPath;
     r.lastUpdate=new Date().toLocaleString('zh-CN');
+    // Also save to IDB for local fallback
+    r['_'+field+'IdbKey']=idbKey;
     // Resolve for immediate display
     if(field==='imgBefore')resolvedImgs[r.id]=blobUrl;
     else if(field==='imgCleaned')resolvedImgs[r.id+'_cleaned']=blobUrl;
@@ -1953,6 +1863,10 @@ createApp({setup(){
     else if(field==='imgAfter')resolvedImgs[r.id+'_after']=blobUrl;
     saveRelicChange(r);
     idbSave('imgFiles',idbKey,_pendingStageImgBlob).catch(function(e){console.warn('Stage img IDB save failed:',e);});
+    // Upload to GitHub for cross-device access
+    pushFileToGh(cloudPath,_pendingStageImgBlob,function(ok,url){
+      if(!ok)console.warn('Stage img cloud upload failed:',url);
+    });
     showStageImgModal.value=false;
     _pendingStageImgBlob=null;
     // Execute the stage transition callback
@@ -1966,7 +1880,6 @@ createApp({setup(){
 
   // --- Cloud Sync UI State ---
   var ghConfig=ref(loadGhConfig());
-  var netlifyApiUrl=ref(loadNetlifyConfig());
   var ghSyncMsg=ref('');
   var ghSyncing=ref(false);
   function saveCloudConfig(){
@@ -1979,31 +1892,25 @@ createApp({setup(){
     };
     saveGhConfig(cfg);
     ghConfig.value=cfg;
-    // Save Netlify API URL
-    var nUrl=netlifyApiUrl.value.trim();
-    saveNetlifyConfig(nUrl);
-    _netlifyApiUrl=nUrl; // reset cache so it picks up the new value
     ghSyncMsg.value='配置已保存';
     setTimeout(function(){ghSyncMsg.value='';},3000);
   }
   function testCloudPull(){
     ghSyncing.value=true;
     ghSyncMsg.value='正在测试拉取...';
-    var pullFn=hasNetlifyBackend()?pullKeyFromNetlify:pullKeyFromGh;
-    pullFn(USER_RELICS_KEY,function(ok){
+    pullKeyFromGh(USER_RELICS_KEY,function(ok){
       ghSyncing.value=false;
-      ghSyncMsg.value=ok?'✓ 拉取成功，可以读取云端数据':'✗ 拉取失败，请检查配置';
+      ghSyncMsg.value=ok?'✓ 拉取成功，可以读取云端数据':'✗ 拉取失败，请检查仓库配置';
     });
   }
   function testCloudPush(){
-    if(!hasNetlifyBackend()&&!ghConfig.value.token){
-      ghSyncMsg.value='请先配置 Netlify API 地址或 GitHub Token';
+    if(!ghConfig.value.token){
+      ghSyncMsg.value='请先配置 GitHub Token 才能测试写入';
       return;
     }
     ghSyncing.value=true;
     ghSyncMsg.value='正在测试写入...';
-    var pushFn=hasNetlifyBackend()?pushKeyToNetlify:pushKeyToGh;
-    pushFn(USER_RELICS_KEY,function(ok,err){
+    pushKeyToGh(USER_RELICS_KEY,function(ok,err){
       ghSyncing.value=false;
       ghSyncMsg.value=ok?'✓ 写入成功，云端同步已启用':'✗ 写入失败: '+(err||'未知错误');
     });
@@ -2018,16 +1925,15 @@ createApp({setup(){
     });
   }
   function manualPushAll(){
-    if(!hasNetlifyBackend()&&!ghConfig.value.token){
-      ghSyncMsg.value='请先配置 Netlify API 地址或 GitHub Token';
+    if(!ghConfig.value.token){
+      ghSyncMsg.value='请先配置 GitHub Token';
       return;
     }
     ghSyncing.value=true;
     ghSyncMsg.value='正在推送所有数据到云端...';
     var done=0;
     _syncKeys.forEach(function(k){
-      var pushFn=hasNetlifyBackend()?pushKeyToNetlify:pushKeyToGh;
-      pushFn(k,function(){
+      pushKeyToGh(k,function(){
         done++;
         if(done===_syncKeys.length){
           ghSyncing.value=false;
@@ -2038,43 +1944,25 @@ createApp({setup(){
     });
   }
 
-  // Rebuild reactive relic list from localStorage (no server fetch)
-  function rebuildRelicList(){
-    try{
-      var _o=loadRelicOverrides();
-      var _ur2=loadUserRelics();
-      var _gr2=genRelics();
-      // Deduplicate: user-uploaded takes precedence over generated
-      var _uids={};
-      _ur2.forEach(function(r){_uids[r.id]=true;});
-      var _fg2=_gr2.filter(function(r){return !_uids[r.id];});
-      // Filter out deleted relics (tombstone)
-      var _dl2=loadDeletedRelics();
-      var _dm2={};
-      _dl2.forEach(function(id){_dm2[id]=true;});
-      var _fur2=_ur2.filter(function(r){return !_dm2[r.id];});
-      var _ffg2=_fg2.filter(function(r){return !_dm2[r.id];});
-      var _all2=_fur2.concat(_ffg2);
-      _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
-      relics.value.splice(0,relics.value.length);
-      _all2.forEach(function(r){relics.value.push(r);});
-      var _su3=loadAllUsers();
-      if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
-      var _sl3=loadLibs();
-      if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
-      resolveAllIdbImgs();
-    }catch(e){}
-  }
-
   // Manual refresh function — pull latest data from server and update UI
   function refreshFromServer(){
     syncAllFromServer(function(){
-      rebuildRelicList();
+      try{
+        var _o=loadRelicOverrides();
+        var _ur2=loadUserRelics();
+        var _gr2=genRelics();
+        var _all2=_ur2.concat(_gr2);
+        _all2.forEach(function(r){var o2=_o[r.id];if(o2){for(var kk in o2){r[kk]=o2[kk];}}});
+        relics.value.splice(0,relics.value.length);
+        _all2.forEach(function(r){relics.value.push(r);});
+        var _su3=loadAllUsers();
+        if(_su3){allUsers.value.splice(0,allUsers.value.length);_su3.forEach(function(u){allUsers.value.push(u);});}
+        var _sl3=loadLibs();
+        if(_sl3){libs.value.splice(0,libs.value.length);_sl3.forEach(function(l){libs.value.push(l);});}
+        resolveAllIdbImgs();
+      }catch(e){}
     });
   }
-
-  // Register for auto-pull UI refresh
-  _onDataSynced=rebuildRelicList;
 
   return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
     page,pageTitle,nav,types,libs,relics,allUsers,
@@ -2097,5 +1985,5 @@ createApp({setup(){
     resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
     relicFilter,relicStyle,relicStyleThumb,stageFilter,
-    ghConfig,netlifyApiUrl,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
+    ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
 }}).mount('#app');
