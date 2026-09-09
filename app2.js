@@ -539,8 +539,19 @@ try{var _v=localStorage.getItem('dataVersion');if(_v!=='v28'){
   localStorage.removeItem('loginUser_v1');
   localStorage.setItem('dataVersion','v28');
 }}catch(e){}
+function resolveCloudUrl(path){
+  if(!path)return '';
+  if(path.indexOf('http')===0)return path;
+  if(path.indexOf('idb://')===0)return null;
+  if(path.indexOf('img/')===0||path.indexOf('./img/')===0){
+    var cfg=loadGhConfig();
+    return 'https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+path.replace(/^\.\//,'');
+  }
+  return path;
+}
 function resolveIdbUrl(url){
-  if(!url||url.indexOf('idb://')!==0)return Promise.resolve(url);
+  if(!url)return Promise.resolve(null);
+  if(url.indexOf('idb://')!==0)return Promise.resolve(resolveCloudUrl(url));
   var parts=url.substring(6).split('/');
   var store=parts[0];var key=parts[1];
   return idbLoad(store,key).then(function(blob){
@@ -1056,17 +1067,33 @@ createApp({setup(){
   var resolvedImgs=reactive({});
   function resolveAllIdbImgs(){
     relics.value.forEach(function(r){
-      if(r.imgBefore&&r.imgBefore.indexOf('idb://')===0){
-        resolveIdbUrl(r.imgBefore).then(function(url){if(url)resolvedImgs[r.id]=url;});
+      if(r.imgBefore){
+        if(r.imgBefore.indexOf('idb://')===0){
+          resolveIdbUrl(r.imgBefore).then(function(url){if(url)resolvedImgs[r.id]=url;});
+        }else{
+          resolvedImgs[r.id]=resolveCloudUrl(r.imgBefore);
+        }
       }
-      if(r.imgCleaned&&r.imgCleaned.indexOf('idb://')===0){
-        resolveIdbUrl(r.imgCleaned).then(function(url){if(url)resolvedImgs[r.id+'_cleaned']=url;});
+      if(r.imgCleaned){
+        if(r.imgCleaned.indexOf('idb://')===0){
+          resolveIdbUrl(r.imgCleaned).then(function(url){if(url)resolvedImgs[r.id+'_cleaned']=url;});
+        }else{
+          resolvedImgs[r.id+'_cleaned']=resolveCloudUrl(r.imgCleaned);
+        }
       }
-      if(r.imgDuring&&r.imgDuring.indexOf('idb://')===0){
-        resolveIdbUrl(r.imgDuring).then(function(url){if(url)resolvedImgs[r.id+'_during']=url;});
+      if(r.imgDuring){
+        if(r.imgDuring.indexOf('idb://')===0){
+          resolveIdbUrl(r.imgDuring).then(function(url){if(url)resolvedImgs[r.id+'_during']=url;});
+        }else{
+          resolvedImgs[r.id+'_during']=resolveCloudUrl(r.imgDuring);
+        }
       }
-      if(r.imgAfter&&r.imgAfter.indexOf('idb://')===0){
-        resolveIdbUrl(r.imgAfter).then(function(url){if(url)resolvedImgs[r.id+'_after']=url;});
+      if(r.imgAfter){
+        if(r.imgAfter.indexOf('idb://')===0){
+          resolveIdbUrl(r.imgAfter).then(function(url){if(url)resolvedImgs[r.id+'_after']=url;});
+        }else{
+          resolvedImgs[r.id+'_after']=resolveCloudUrl(r.imgAfter);
+        }
       }
     });
   }
@@ -1084,20 +1111,31 @@ createApp({setup(){
   function latestImg(r){
     if(r.status==='已修复'&&r.imgAfter){
       if(r.imgAfter.indexOf('idb://')===0)return resolvedImgs[r.id+'_after']||r.imgAfter;
-      return r.imgAfter;
+      return resolvedImgs[r.id+'_after']||resolveCloudUrl(r.imgAfter);
     }
     if(r.status==='修复中'&&r.imgDuring){
       if(r.imgDuring.indexOf('idb://')===0)return resolvedImgs[r.id+'_during']||r.imgDuring;
-      return r.imgDuring;
+      return resolvedImgs[r.id+'_during']||resolveCloudUrl(r.imgDuring);
     }
     if((r.status==='待修复'||r.status==='修复中')&&r.imgCleaned){
       if(r.imgCleaned.indexOf('idb://')===0)return resolvedImgs[r.id+'_cleaned']||r.imgCleaned;
-      return r.imgCleaned;
+      return resolvedImgs[r.id+'_cleaned']||resolveCloudUrl(r.imgCleaned);
     }
-    return resolvedImgs[r.id]||r.imgBefore;
+    return resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore);
   }
   var placeholderSvg='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><rect width="36" height="36" rx="6" fill="#e5e7eb"/><text x="18" y="22" font-size="10" fill="#9ca3af" text-anchor="middle">无图</text></svg>');
-  function imgFallback(e){e.target.src=placeholderSvg;}
+  function imgFallback(e){
+    var src=e.target.src||'';
+    if(src.indexOf('raw.githubusercontent.com')>=0){e.target.src=placeholderSvg;return;}
+    var cfg=loadGhConfig();
+    var repoBase='github.io/'+cfg.repo+'/';
+    if(src.indexOf(repoBase)>=0){
+      var path=src.substring(src.indexOf(repoBase)+repoBase.length);
+      e.target.src='https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+path;
+      return;
+    }
+    e.target.src=placeholderSvg;
+  }
 
   var fStatus=ref('全部');var fType=ref('');var fLib=ref('');var search=ref('');
   var assignSearch=ref('');
@@ -1341,27 +1379,27 @@ createApp({setup(){
     var list=[];
     // Stage 1: excavated (always shown if uploaded)
     if(r.imgBefore){
-      list.push({img:r.imgBefore,key:r.id,filter:'',label:'刚出土 · 病害记录'});
+      list.push({img:resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore),key:r.id,filter:'',label:'刚出土 · 病害记录'});
     }
     // Stage 2: cleaned (shown if reached 待修复 or beyond)
     if(r.status==='待修复'||r.status==='修复中'||r.status==='已修复'){
       var cleaned=r.imgCleaned;
       var cleanedKey=cleaned?r.id+'_cleaned':r.id;
-      var cleanedSrc=cleaned||r.imgBefore;
+      var cleanedSrc=cleaned?(resolvedImgs[r.id+'_cleaned']||resolveCloudUrl(cleaned)):(resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore));
       list.push({img:cleanedSrc,key:cleanedKey,filter:stageFilter('cleaned'),label:'清理后 · 初步处理'});
     }
     // Stage 3: during repair (shown if reached 修复中)
     if(r.status==='修复中'||r.status==='已修复'){
       var during=r.imgDuring;
       var duringKey=during?r.id+'_during':r.id;
-      var duringSrc=during||r.imgBefore;
+      var duringSrc=during?(resolvedImgs[r.id+'_during']||resolveCloudUrl(during)):(resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore));
       list.push({img:duringSrc,key:duringKey,filter:stageFilter('during'),label:'修复中 · 过程记录'});
     }
     // Stage 4: after repair (shown only if 已修复)
     if(r.status==='已修复'){
       var after=r.imgAfter;
       var afterKey=after?r.id+'_after':r.id;
-      var afterSrc=after||r.imgBefore;
+      var afterSrc=after?(resolvedImgs[r.id+'_after']||resolveCloudUrl(after)):(resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore));
       list.push({img:afterSrc,key:afterKey,filter:stageFilter('after'),label:'修复后 · 修复完成'});
     }
     return list;
