@@ -174,10 +174,6 @@ function hasGhToken(){
 }
 function getGhRawUrl(key){
   var cfg=loadGhConfig();
-  var host=window.location.host;
-  if(host.indexOf('github.io')>=0){
-    return './'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
-  }
   return 'https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+cfg.dataDir+'/'+key+'.json?t='+Date.now();
 }
 function getGhApiUrl(key){
@@ -416,16 +412,6 @@ function syncAllFromServer(callback){
       }
     });
   });
-}
-
-// Auto-pull: check for updates every 5 seconds
-function startAutoPull(){
-  if(_autoPullTimer)clearInterval(_autoPullTimer);
-  _autoPullTimer=setInterval(function(){
-    syncAllFromServer(function(){
-      if(_onDataSynced)try{_onDataSynced();}catch(e){}
-    });
-  },5000);
 }
 
 // Initialize: try to pull on startup (best-effort)
@@ -878,8 +864,13 @@ createApp({setup(){
         return true;
       });
       _all.forEach(function(r){var ov=_o[r.id];if(ov){for(var kk in ov){r[kk]=ov[kk];}}});
+      var _prevSelId=sel.value?sel.value.id:null;
       relics.value.splice(0,relics.value.length);
       _all.forEach(function(r){relics.value.push(r);});
+      if(_prevSelId){
+        var _newSel=relics.value.find(function(r){return r.id===_prevSelId;});
+        if(_newSel)sel.value=_newSel;
+      }
       resolveAllIdbImgs();
     }catch(e){console.warn('rebuildRelicList error:',e);}
   }
