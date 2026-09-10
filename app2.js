@@ -721,10 +721,6 @@ function resolveCloudUrl(path){
   if(path.indexOf('idb://')===0)return null;
   if(path.indexOf('img/')===0||path.indexOf('./img/')===0){
     var cleanPath=path.replace(/^\.\//,'');
-    var host=window.location.host||'';
-    if(host.indexOf('github.io')>=0){
-      return './'+cleanPath;
-    }
     var cfg=loadGhConfig();
     return 'https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+cleanPath;
   }
@@ -1368,18 +1364,13 @@ createApp({setup(){
     var img=e.target;
     var attempt=parseInt(img.getAttribute('data-fb')||'0');
     var cfg=loadGhConfig();
-    var host=window.location.host||'';
-    var onGhPages=host.indexOf('github.io')>=0;
     if(attempt===0){
       img.setAttribute('data-fb','1');
-      if(onGhPages){
-        var p1=img.src.match(/\/img\/.+$/);
-        if(p1){img.src='https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+p1[0];return;}
-      }
       var m2=img.src.match(/\/gh\/([^/]+)\/([^/]+)@([^/]+)\/(.+)$/);
-      if(m2){img.src='https://raw.githubusercontent.com/'+m2[1]+'/'+m2[2]+'/'+m2[3]+'/'+m2[4];return;}
-      var m1=img.src.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
-      if(m1){img.src='https://cdn.jsdelivr.net/gh/'+m1[1]+'/'+m1[2]+'@'+m1[3]+'/'+m1[4];return;}
+      if(m2){
+        img.src='https://api.github.com/repos/'+m2[1]+'/'+m2[2]+'/contents/'+m2[4]+'?ref='+m2[3];
+        return;
+      }
     }
     img.removeAttribute('data-fb');
     img.src=placeholderSvg;
@@ -2056,10 +2047,13 @@ createApp({setup(){
           resolveIdbUrl(glbPath).then(function(resolvedUrl){
           if(!resolvedUrl){loading3D.value=false;alert('3D模型文件未找到，可能已被清除');return;}
           var fbUrl='';
+          var cfg2=loadGhConfig();
+          var cdnBase='https://cdn.jsdelivr.net/gh/'+cfg2.owner+'/'+cfg2.repo+'@'+cfg2.branch+'/';
           if(glbPath.indexOf('idb://')===0){
             var idbKey2=glbPath.substring(6).split('/')[1];
-            var cfg2=loadGhConfig();
-            fbUrl='https://cdn.jsdelivr.net/gh/'+cfg2.owner+'/'+cfg2.repo+'@'+cfg2.branch+'/img/3d/'+idbKey2+'.glb';
+            fbUrl=cdnBase+'img/3d/'+idbKey2+'.glb';
+          }else if(glbPath.indexOf('img/3d/')===0){
+            fbUrl=cdnBase+glbPath;
           }
           function tryLoad(url,fbUrl){
           var progBar=document.getElementById('viewer3d-progress');
