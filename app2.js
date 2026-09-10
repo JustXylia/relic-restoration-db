@@ -411,7 +411,12 @@ function pushFileToGh(filePath, blob, callback){
       }
       if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+filePath+': '+r.status+' '+t.substring(0,200))});
       return r.json();
-    }).then(function(){
+    }).then(function(resp){
+      var expectedSize=blob.size;
+      var actualSize=resp&&resp.content?resp.content.size:0;
+      if(actualSize>0&&Math.abs(actualSize-expectedSize)>100){
+        throw new Error('Size mismatch: expected '+expectedSize+' got '+actualSize);
+      }
       if(callback)callback(true,'./'+filePath);
     }).catch(function(e){
       console.error('pushFileToGh failed:',filePath,e.message);
@@ -1393,10 +1398,11 @@ createApp({setup(){
     var glbCloudPath=hasGlb?('img/3d/'+newId+'_unrestored.glb'):'';
     var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgCloudPath:relicImg(upForm.type,seqNum),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?glbCloudPath:'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
     var uploadStatus={img:false,glb:false};
+    var glbTooBig=hasGlb&&_pendingGlbBlob&&_pendingGlbBlob.size>=50*1024*1024;
     var savePromises=[];
     if(hasGlb){
       savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
-      if(_pendingGlbBlob.size<100*1024*1024){
+      if(_pendingGlbBlob.size<50*1024*1024){
         savePromises.push(new Promise(function(res){
           pushFileToGh(glbCloudPath,_pendingGlbBlob,function(ok,url){uploadStatus.glb=ok;res();});
         }));
@@ -1417,7 +1423,13 @@ createApp({setup(){
       resolveIdbUrl(hasImg?imgCloudPath:'').then(function(url){if(url)resolvedImgs[newId]=url;});
       var msg='上传成功！编号：'+newId;
       if(hasImg&&!uploadStatus.img)msg+='\\n⚠ 图片云同步失败，仅本地保存';
-      if(hasGlb&&!uploadStatus.glb)msg+='\\n⚠ 三维模型云同步失败，仅本地保存';
+      if(hasGlb&&!uploadStatus.glb){
+        if(glbTooBig){
+          msg+='\\n⚠ 三维模型超过50MB，仅本地保存（其他设备无法查看3D模型）';
+        }else{
+          msg+='\\n⚠ 三维模型云同步失败，仅本地保存';
+        }
+      }
       if((!hasImg||uploadStatus.img)&&(!hasGlb||uploadStatus.glb))msg+='，云同步完成';
       alert(msg);
     });
