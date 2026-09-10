@@ -140,6 +140,9 @@ var _ghCache={}; // cache file SHAs for faster updates
 var _autoPullTimer=null;
 var _onDataSynced=null; // callback to refresh UI after auto-pull
 var _syncInProgress=false; // lock to prevent overlapping syncs
+var _cloudKeyMap={};
+_cloudKeyMap[USER_RELICS_KEY]=USER_RELICS_KEY+'_cloud';
+_cloudKeyMap[RELIC_OVERRIDES_KEY]=RELIC_OVERRIDES_KEY+'_cloud';
 
 function loadGhConfig(){
   var _t=['gho_','9UkR','RX5F','PYBc','Cvdc','3mi2','IE9u','EEs6','Om0z','JUkG'];
@@ -307,12 +310,12 @@ function pullKeyFromGh(key,callback){
 }
 
 // Push single key to GitHub (needs token)
-function pushKeyToGh(key,callback){
+function pushKeyToGh(key,callback,overrideVal){
   var cfg=loadGhConfig();
   var token=cfg.token?cfg.token.trim():'';
   if(!token){if(callback)callback(false,'no token');return;}
 
-  var val=localStorage.getItem(key);
+  var val=overrideVal||localStorage.getItem(key);
   if(val===null){if(callback)callback(false,'no local data');return;}
 
   var url=getGhApiUrl(key);
@@ -519,12 +522,14 @@ function syncToServer(){
   if(_syncTimer)clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
     _syncKeys.forEach(function(k){
-      var val=localStorage.getItem(k);
+      var cloudKey=_cloudKeyMap[k]||k;
+      var val=localStorage.getItem(cloudKey);
+      if(val===null)val=localStorage.getItem(k);
       if(val===null)return;
       if(_lastPushed[k]===val)return;
       pushKeyToGh(k,function(ok){
         if(ok)_lastPushed[k]=val;
-      });
+      },val);
     });
   },500);
 }
@@ -561,8 +566,31 @@ try{
   syncAllFromServer(function(){});
 }catch(e){}
 
+function sanitizeRelicForCloud(r){
+  var copy={};
+  for(var k in r){
+    if(typeof r[k]==='function')continue;
+    if(typeof r[k]==='object'&&r[k]!==null&&!Array.isArray(r[k]))continue;
+    if(typeof r[k]==='string'&&(r[k].indexOf('idb://')===0)){
+      if(r[k].indexOf('idb://imgFiles/')===0){
+        var imgId=r[k].substring('idb://imgFiles/'.length);
+        copy[k]='img/stages/'+imgId+'.jpg';
+      }else if(r[k].indexOf('idb://glbFiles/')===0){
+        var glbId=r[k].substring('idb://glbFiles/'.length);
+        copy[k]='img/3d/'+glbId+'.glb';
+      }else{
+        copy[k]=r[k];
+      }
+    }else{
+      copy[k]=r[k];
+    }
+  }
+  return copy;
+}
 function saveUserRelics(relics){
   try{localStorage.setItem(USER_RELICS_KEY,JSON.stringify(relics));}catch(e){console.error('Save failed:',e);}
+  var cloudRelics=relics.map(sanitizeRelicForCloud);
+  try{localStorage.setItem(USER_RELICS_KEY+'_cloud',JSON.stringify(cloudRelics));}catch(e){}
   syncToServer();
 }
 function loadUserRelics(){
@@ -600,6 +628,11 @@ function loadRelicOverrides(){
 }
 function saveRelicOverrides(obj){
   try{localStorage.setItem(RELIC_OVERRIDES_KEY,JSON.stringify(obj));}catch(e){console.error('Override save failed:',e);}
+  var cloudOv={};
+  for(var id in obj){
+    cloudOv[id]=sanitizeRelicForCloud(obj[id]);
+  }
+  try{localStorage.setItem(RELIC_OVERRIDES_KEY+'_cloud',JSON.stringify(cloudOv));}catch(e){}
   syncToServer();
 }
 function saveRelicOverride(id,fields){
@@ -698,8 +731,10 @@ function resolveCloudUrl(path){
   return path;
 }
 function idbCloudFallback(store,key){
-  if(store==='glbFiles')return resolveCloudUrl('img/3d/'+key+'.glb');
-  if(store==='imgFiles')return resolveCloudUrl('img/stages/'+key+'.jpg');
+  var cfg=loadGhConfig();
+  var baseUrl='https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/';
+  if(store==='glbFiles')return baseUrl+'img/3d/'+key+'.glb';
+  if(store==='imgFiles')return baseUrl+'img/stages/'+key+'.jpg';
   return '';
 }
 function resolveIdbUrlSync(url){
