@@ -371,6 +371,83 @@ function b64EncodeUnicode(str){
   }));
 }
 
+// Compress GLB file: load with GLTFLoader, downscale textures, re-export with GLTFExporter
+function compressGLB(blob, maxSize, callback){
+  if(typeof THREE==='undefined'||typeof THREE.GLTFLoader==='undefined'||typeof THREE.GLTFExporter==='undefined'){
+    if(callback)callback(null,'THREE or GLTFLoader/Exporter not available');return;
+  }
+  var url=URL.createObjectURL(blob);
+  var loader=new THREE.GLTFLoader();
+  loader.load(url,function(gltf){
+    URL.revokeObjectURL(url);
+    var scene=gltf.scene;
+    var meshCount=0,texCount=0;
+    scene.traverse(function(obj){
+      if(obj.isMesh){
+        meshCount++;
+        var geom=obj.geometry;
+        if(geom&&geom.index){
+          var idxCount=geom.index.count;
+          if(idxCount>60000){
+            var step=Math.ceil(idxCount/60000);
+            var newIdx=[];
+            for(var i=0;i<idxCount;i+=step){newIdx.push(geom.index.array[i]);}
+            geom.index=new THREE.BufferAttribute(new Uint16Array(newIdx),1);
+            geom.index.needsUpdate=true;
+          }
+        }
+        if(obj.material){
+          var mats=Array.isArray(obj.material)?obj.material:[obj.material];
+          mats.forEach(function(mat){
+            var texFields=['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap'];
+            texFields.forEach(function(tf){
+              if(mat[tf]&&mat[tf].image){
+                texCount++;
+                var img=mat[tf].image;
+                var maxDim=1024;
+                if(img.width>maxDim||img.height>maxDim){
+                  var scale=Math.min(maxDim/img.width,maxDim/img.height);
+                  var c=document.createElement('canvas');
+                  c.width=Math.floor(img.width*scale);
+                  c.height=Math.floor(img.height*scale);
+                  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+                  var newTex=new THREE.CanvasTexture(c);
+                  newTex.colorSpace=mat[tf].colorSpace;
+                  mat[tf].dispose();
+                  mat[tf]=newTex;
+                }
+              }
+            });
+          });
+        }
+      }
+    });
+    console.log('Compress: '+meshCount+' meshes, '+texCount+' textures processed');
+    var exporter=new THREE.GLTFExporter();
+    exporter.parse(scene,function(result){
+      var compressedBlob;
+      if(result instanceof ArrayBuffer){
+        compressedBlob=new Blob([result],{type:'model/gltf-binary'});
+      }else{
+        var json=JSON.stringify(result,null,0);
+        compressedBlob=new Blob([json],{type:'application/json'});
+      }
+      console.log('Compressed GLB: '+blob.size+' -> '+compressedBlob.size+' bytes');
+      if(compressedBlob.size<maxSize){
+        if(callback)callback(compressedBlob,null);
+      }else{
+        if(callback)callback(compressedBlob,'still too large after compression: '+compressedBlob.size);
+      }
+    },{binary:true,onlyVisible:true,embedImages:true,maxTextureSize:1024});
+  },function(progress){
+    console.log('GLB load progress: '+Math.round(progress.loaded/1024)+'KB');
+  },function(error){
+    URL.revokeObjectURL(url);
+    console.error('GLB compression load error:',error);
+    if(callback)callback(null,'GLB load error: '+(error.message||'unknown'));
+  });
+}
+
 // Upload a blob (image/glb) to GitHub repo as a file, return relative URL
 function pushFileToGh(filePath, blob, callback){
   var cfg=loadGhConfig();
@@ -1398,11 +1475,30 @@ createApp({setup(){
     var glbCloudPath=hasGlb?('img/3d/'+newId+'_unrestored.glb'):'';
     var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgCloudPath:relicImg(upForm.type,seqNum),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?glbCloudPath:'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
     var uploadStatus={img:false,glb:false};
-    var glbTooBig=hasGlb&&_pendingGlbBlob&&_pendingGlbBlob.size>=50*1024*1024;
+    var glbTooBig=false;
+    var glbCompressing=hasGlb&&_pendingGlbBlob&&_pendingGlbBlob.size>=50*1024*1024;
     var savePromises=[];
     if(hasGlb){
       savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
-      if(_pendingGlbBlob.size<50*1024*1024){
+      if(glbCompressing){
+        savePromises.push(new Promise(function(res){
+          console.log('GLB too large ('+(_pendingGlbBlob.size/1024/1024).toFixed(1)+'MB), compressing...');
+          compressGLB(_pendingGlbBlob,45*1024*1024,function(compressedBlob,err){
+            if(compressedBlob){
+              console.log('GLB compressed: '+(compressedBlob.size/1024/1024).toFixed(1)+'MB');
+              pushFileToGh(glbCloudPath,compressedBlob,function(ok,url){
+                uploadStatus.glb=ok;
+                if(!ok)glbTooBig=true;
+                res();
+              });
+            }else{
+              console.error('GLB compression failed:',err);
+              glbTooBig=true;
+              res();
+            }
+          });
+        }));
+      }else if(_pendingGlbBlob.size<50*1024*1024){
         savePromises.push(new Promise(function(res){
           pushFileToGh(glbCloudPath,_pendingGlbBlob,function(ok,url){uploadStatus.glb=ok;res();});
         }));
@@ -1425,12 +1521,15 @@ createApp({setup(){
       if(hasImg&&!uploadStatus.img)msg+='\\n⚠ 图片云同步失败，仅本地保存';
       if(hasGlb&&!uploadStatus.glb){
         if(glbTooBig){
-          msg+='\\n⚠ 三维模型超过50MB，仅本地保存（其他设备无法查看3D模型）';
+          msg+='\\n⚠ 三维模型压缩后仍超50MB，仅本地保存（其他设备无法查看3D模型）';
         }else{
           msg+='\\n⚠ 三维模型云同步失败，仅本地保存';
         }
       }
-      if((!hasImg||uploadStatus.img)&&(!hasGlb||uploadStatus.glb))msg+='，云同步完成';
+      if(hasGlb&&uploadStatus.glb&&glbCompressing){
+        msg+='\\n✓ 三维模型已自动压缩并云同步';
+      }
+      if((!hasImg||uploadStatus.img)&&(!hasGlb||uploadStatus.glb)&&!glbCompressing)msg+='，云同步完成';
       alert(msg);
     });
   }
