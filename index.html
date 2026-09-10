@@ -7,6 +7,8 @@
 <script src="vue.min.js?v=20260825" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+body,div,span,p,h1,h2,h3,h4,h5,h6,a,button,label,td,th,li{-webkit-user-select:none;-moz-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
 :root{
   --c-primary:#0F2A4A;--c-primary-2:#1B3A5C;--c-primary-3:#2E5C8A;--c-accent:#2563EB;--c-accent-lt:#DBEAFE;
   --c-bg:#EFF4FA;--c-card:#FFFFFF;--c-text:#0F172A;--c-text-2:#475569;--c-text-3:#94A3B8;
@@ -839,7 +841,7 @@ tr:hover td{background:#F8FAFC}
 <div v-if="showPermModal" class="mask" @click.self="showPermModal=false"><div class="modal"><div class="modal-h"><h3>权限管理 — {{permTarget?.name}}</h3><span class="x" @click="showPermModal=false">×</span></div><div class="modal-b" v-if="permTarget"><div class="fg"><label>查看范围</label><select v-model="permTarget.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:permTarget.perms[perm.key]}" @click="permTarget.perms[perm.key]=!permTarget.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showPermModal=false">取消</button><button class="btn btn-primary" @click="showPermModal=false">保存</button></div></div></div>
 <div v-if="showNoti" class="mask" @click="showNoti=false"><div style="position:absolute;top:60px;right:28px;width:320px;background:#fff;border-radius:10px;box-shadow:var(--sh-lg);z-index:1001;overflow:hidden"><div style="padding:14px 16px;border-bottom:1px solid var(--c-border);font-weight:700;font-size:14px">消息通知</div><div v-for="n in notifications" :key="n.id" style="padding:12px 16px;border-bottom:1px solid var(--c-border);font-size:13px"><div>{{n.text}}</div><div style="font-size:11px;color:var(--c-text-3);margin-top:2px">{{n.time}}</div></div></div></div>
 
-<div v-if="showStageImgModal" class="mask" @click.self="cancelStageImg"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>上传阶段图片（必填）</h3><span class="x" @click="cancelStageImg">×</span></div><div class="modal-b" v-if="stageImgTarget"><div class="alert alert-warn"><span>!</span><span>进入下一阶段必须上传 <b>{{stageImgLabel}}</b>，否则将保持当前阶段不变。文物编号: {{stageImgTarget.id}}</span></div><div class="fg"><label>{{stageImgLabel}} <span style="color:var(--c-danger)">*</span></label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onStageImgUpload" style="display:none">选择图片</label><span style="font-size:12px;color:var(--c-text-3)">支持 JPG/PNG，最大10MB</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="cancelStageImg">取消（保持原状态）</button><button class="btn btn-primary" @click="confirmStageImg">上传并进入下一阶段</button></div></div></div>
+<div v-if="showStageImgModal" class="mask" @click.self="cancelStageImg"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>上传阶段图片（必填）</h3><span class="x" @click="cancelStageImg">×</span></div><div class="modal-b" v-if="stageImgTarget"><div class="alert alert-warn"><span>!</span><span>进入下一阶段必须上传 <b>{{stageImgLabel}}</b>，否则将保持当前阶段不变。文物编号: {{stageImgTarget.id}}</span></div><div class="fg"><label>{{stageImgLabel}} <span style="color:var(--c-danger)">*</span></label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onStageImgUpload" style="display:none">选择图片</label><span v-if="stageImgFileName" style="font-size:12px;color:var(--c-success)">✓ {{stageImgFileName}}</span><span v-else style="font-size:12px;color:var(--c-text-3)">支持 JPG/PNG，最大10MB</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="cancelStageImg">取消（保持原状态）</button><button class="btn btn-primary" @click="confirmStageImg">上传并进入下一阶段</button></div></div></div>
 
 
 </div>
@@ -849,7 +851,7 @@ tr:hover td{background:#F8FAFC}
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app2.js?v=20260909e" defer></script>
+<script src="app2.js?v=20260910a" defer></script>
 </body>
 </html>
 
