@@ -135,6 +135,7 @@ function getNextSeq(prefix){
 var GH_CONFIG_KEY='ghConfig_v1';
 var _syncKeys=[USER_RELICS_KEY,REG_USERS_KEY,RELIC_OVERRIDES_KEY,LIBS_KEY,USERS_KEY,SEQ_KEY,DELETED_KEY];
 var _syncTimer=null;
+var _lastPushed={};
 var _ghCache={}; // cache file SHAs for faster updates
 var _autoPullTimer=null;
 var _onDataSynced=null; // callback to refresh UI after auto-pull
@@ -404,11 +405,12 @@ function pushFileToGh(filePath, blob, callback){
         body:JSON.stringify(payload)
       });
     }).then(function(r){
-      if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+filePath+': '+r.status)});
+      if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+filePath+': '+r.status+' '+t.substring(0,100))});
       return r.json();
     }).then(function(){
       if(callback)callback(true,'./'+filePath);
     }).catch(function(e){
+      console.error('pushFileToGh failed:',filePath,e.message);
       if(callback)callback(false,e.message);
     });
   };
@@ -417,10 +419,14 @@ function pushFileToGh(filePath, blob, callback){
 
 // Sync all keys to GitHub (debounced)
 function syncToServer(){
-  if(!hasGhToken())return; // only push if token is configured
+  if(!hasGhToken())return;
   if(_syncTimer)clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
     _syncKeys.forEach(function(k){
+      var val=localStorage.getItem(k);
+      if(val===null)return;
+      if(_lastPushed[k]===val)return;
+      _lastPushed[k]=val;
       pushKeyToGh(k,function(){});
     });
   },500);
@@ -954,13 +960,13 @@ createApp({setup(){
         rebuildRelicList();
       }catch(e){console.warn('Init callback error:',e);}
     });
-    // Periodic sync every 5s — pull updates from other devices and rebuild UI
+    // Periodic sync every 15s — pull updates from other devices and rebuild UI
     setInterval(function(){
       if(!loggedIn.value)return;
       syncAllFromServer(function(){
         rebuildRelicList();
       });
-    },5000);
+    },15000);
     // Also sync when window regains focus
     window.addEventListener('focus',function(){
       syncAllFromServer(function(){
