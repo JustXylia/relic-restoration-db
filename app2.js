@@ -906,7 +906,20 @@ createApp({setup(){
         _seen[r.id]=true;
         return true;
       });
-      _all.forEach(function(r){var ov=_o[r.id];if(ov){for(var kk in ov){r[kk]=ov[kk];}}});
+      _all.forEach(function(r){
+        var ov=_o[r.id];
+        if(ov){
+          if(r.userUploaded){
+            var urT=r.lastUpdate||r.uploadTime||'';
+            var ovT=ov.lastUpdate||'';
+            if(ovT>urT){
+              for(var kk in ov){r[kk]=ov[kk];}
+            }
+          }else{
+            for(var kk2 in ov){r[kk2]=ov[kk2];}
+          }
+        }
+      });
       var _prevSelId=sel.value?sel.value.id:null;
       relics.value.splice(0,relics.value.length);
       _all.forEach(function(r){relics.value.push(r);});
