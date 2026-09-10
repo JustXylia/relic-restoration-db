@@ -515,8 +515,9 @@ function syncToServer(){
       var val=localStorage.getItem(k);
       if(val===null)return;
       if(_lastPushed[k]===val)return;
-      _lastPushed[k]=val;
-      pushKeyToGh(k,function(){});
+      pushKeyToGh(k,function(ok){
+        if(ok)_lastPushed[k]=val;
+      });
     });
   },500);
 }
@@ -1016,7 +1017,7 @@ createApp({setup(){
   var loginForm=reactive({username:'',password:''});var loginErr=ref('');
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
-  var _lastRelicHash='';
+  var _lastRelicCount=-1;
   function rebuildRelicList(){
     try{
       var _o=loadRelicOverrides();
@@ -1047,12 +1048,12 @@ createApp({setup(){
           }
         }
       });
-      var _hash=_all.length+'|'+_deleted.length+'|'+(_all[0]?_all[0].id:'')+(_all[0]?(_all[0].lastUpdate||_all[0].uploadTime||''):'')+(_all[_all.length-1]?(_all[_all.length-1].id||''):'');
-      if(_hash===_lastRelicHash){
+      var _newCount=_all.length+'_'+_deleted.length+'_'+_ur.length;
+      if(_newCount===_lastRelicCount){
         resolveAllIdbImgs();
         return;
       }
-      _lastRelicHash=_hash;
+      _lastRelicCount=_newCount;
       var _prevSelId=sel.value?sel.value.id:null;
       relics.value.splice(0,relics.value.length);
       _all.forEach(function(r){relics.value.push(r);});
