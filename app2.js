@@ -1005,6 +1005,7 @@ createApp({setup(){
   var loginForm=reactive({username:'',password:''});var loginErr=ref('');
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
   var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
+  var _lastRelicHash='';
   function rebuildRelicList(){
     try{
       var _o=loadRelicOverrides();
@@ -1035,6 +1036,12 @@ createApp({setup(){
           }
         }
       });
+      var _hash=_all.length+'|'+_deleted.length+'|'+(_all[0]?_all[0].id:'')+(_all[0]?(_all[0].lastUpdate||_all[0].uploadTime||''):'')+(_all[_all.length-1]?(_all[_all.length-1].id||''):'');
+      if(_hash===_lastRelicHash){
+        resolveAllIdbImgs();
+        return;
+      }
+      _lastRelicHash=_hash;
       var _prevSelId=sel.value?sel.value.id:null;
       relics.value.splice(0,relics.value.length);
       _all.forEach(function(r){relics.value.push(r);});
@@ -1227,28 +1234,28 @@ createApp({setup(){
   var resolvedImgs=reactive({});
   function resolveAllIdbImgs(){
     relics.value.forEach(function(r){
-      if(r.imgBefore){
+      if(r.imgBefore&&!resolvedImgs[r.id]){
         if(r.imgBefore.indexOf('idb://')===0){
           resolveIdbUrl(r.imgBefore).then(function(url){if(url)resolvedImgs[r.id]=url;});
         }else{
           resolvedImgs[r.id]=resolveCloudUrl(r.imgBefore);
         }
       }
-      if(r.imgCleaned){
+      if(r.imgCleaned&&!resolvedImgs[r.id+'_cleaned']){
         if(r.imgCleaned.indexOf('idb://')===0){
           resolveIdbUrl(r.imgCleaned).then(function(url){if(url)resolvedImgs[r.id+'_cleaned']=url;});
         }else{
           resolvedImgs[r.id+'_cleaned']=resolveCloudUrl(r.imgCleaned);
         }
       }
-      if(r.imgDuring){
+      if(r.imgDuring&&!resolvedImgs[r.id+'_during']){
         if(r.imgDuring.indexOf('idb://')===0){
           resolveIdbUrl(r.imgDuring).then(function(url){if(url)resolvedImgs[r.id+'_during']=url;});
         }else{
           resolvedImgs[r.id+'_during']=resolveCloudUrl(r.imgDuring);
         }
       }
-      if(r.imgAfter){
+      if(r.imgAfter&&!resolvedImgs[r.id+'_after']){
         if(r.imgAfter.indexOf('idb://')===0){
           resolveIdbUrl(r.imgAfter).then(function(url){if(url)resolvedImgs[r.id+'_after']=url;});
         }else{
