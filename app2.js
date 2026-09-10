@@ -138,6 +138,7 @@ var _syncTimer=null;
 var _ghCache={}; // cache file SHAs for faster updates
 var _autoPullTimer=null;
 var _onDataSynced=null; // callback to refresh UI after auto-pull
+var _syncInProgress=false; // lock to prevent overlapping syncs
 
 function loadGhConfig(){
   var _t=['ghu_','O0Ir8','NNvu7','6cHQ2','Lzfko','V5mjA','zp0hU','0PgbC','3'];
@@ -267,13 +268,22 @@ function pullKeyFromGh(key,callback){
   var headers={'Accept':'application/vnd.github.v3+json'};
   if(cfg.token)headers['Authorization']='token '+cfg.token;
   fetch(apiUrl,{cache:'no-store',headers:headers}).then(function(r){
+    if(r.status===403){
+      if(callback)callback(false);
+      return null;
+    }
     if(!r.ok)throw new Error('HTTP '+r.status);
     return r.json();
   }).then(function(j){
-    if(!j||!j.content){
+    if(!j){
       if(callback)callback(false);
       return;
     }
+    if(!j.content){
+      if(callback)callback(false);
+      return;
+    }
+    if(j.sha)_ghCache[key]=j.sha;
     var text=decodeURIComponent(escape(atob(j.content.replace(/\n/g,''))));
     try{
       var serverData=JSON.parse(text);
@@ -293,45 +303,36 @@ function pushKeyToGh(key,callback){
   var cfg=loadGhConfig();
   var token=cfg.token?cfg.token.trim():'';
   if(!token){if(callback)callback(false,'no token');return;}
-  
+
   var val=localStorage.getItem(key);
   if(val===null){if(callback)callback(false,'no local data');return;}
-  
+
   var url=getGhApiUrl(key);
   var content=b64EncodeUnicode(val);
-  
-  fetch(url+'?ref='+cfg.branch,{
-    headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
-  }).then(function(r){
-    if(r.status===404)return null;
-    if(!r.ok){
-      return r.text().then(function(txt){
-        var errMsg='GET failed: '+r.status;
-        try{var j=JSON.parse(txt);if(j&&j.message)errMsg+=' - '+j.message;}catch(e){}
-        throw new Error(errMsg);
-      });
-    }
-    return r.json();
-  }).then(function(existing){
-    var payload={
-      message:'Update '+key+' data',
-      content:content,
-      branch:cfg.branch
-    };
-    if(existing&&existing.sha){
-      payload.sha=existing.sha;
-      _ghCache[key]=existing.sha;
-    }
+  var payload={message:'Update '+key+' data',content:content,branch:cfg.branch};
+  if(_ghCache[key])payload.sha=_ghCache[key];
+
+  function doPut(sha){
+    if(sha)payload.sha=sha;
     return fetch(url,{
       method:'PUT',
-      headers:{
-        'Authorization':'token '+token,
-        'Accept':'application/vnd.github.v3+json',
-        'Content-Type':'application/json'
-      },
+      headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
-  }).then(function(r){
+  }
+
+  doPut(_ghCache[key]).then(function(r){
+    if(r.status===409){
+      return fetch(url+'?ref='+cfg.branch,{
+        headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+      }).then(function(r2){return r2.json();}).then(function(existing){
+        if(existing&&existing.sha){
+          _ghCache[key]=existing.sha;
+          return doPut(existing.sha);
+        }
+        throw new Error('No SHA on 409 retry');
+      });
+    }
     if(!r.ok){
       return r.text().then(function(txt){
         var errMsg='PUT failed: '+r.status;
@@ -410,12 +411,18 @@ function syncToServer(){
 
 // Pull all keys from GitHub
 function syncAllFromServer(callback){
+  if(_syncInProgress){
+    if(callback)callback();
+    return;
+  }
+  _syncInProgress=true;
   var pending=_syncKeys.length;
   var done=0;
   _syncKeys.forEach(function(k){
     pullKeyFromGh(k,function(ok){
       done++;
       if(done===pending){
+        _syncInProgress=false;
         try{purgeDeletedRelics();}catch(e){}
         if(callback)callback();
       }
