@@ -593,6 +593,10 @@ function resolveCloudUrl(path){
   if(path.indexOf('idb://')===0)return null;
   if(path.indexOf('img/')===0||path.indexOf('./img/')===0){
     var cleanPath=path.replace(/^\.\//,'');
+    var host=window.location.host||'';
+    if(host.indexOf('github.io')>=0){
+      return './'+cleanPath;
+    }
     var cfg=loadGhConfig();
     return 'https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+cleanPath;
   }
@@ -1197,31 +1201,24 @@ createApp({setup(){
   }
   var placeholderSvg='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><rect width="36" height="36" rx="6" fill="#e5e7eb"/><text x="18" y="22" font-size="10" fill="#9ca3af" text-anchor="middle">无图</text></svg>');
   function imgFallback(e){
-    var src=e.target.src||'';
+    var img=e.target;
+    var attempt=parseInt(img.getAttribute('data-fb')||'0');
     var cfg=loadGhConfig();
-    if(src.indexOf('raw.githubusercontent.com')>=0){
-      var m1=src.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
-      if(m1){
-        e.target.src='https://cdn.jsdelivr.net/gh/'+m1[1]+'/'+m1[2]+'@'+m1[3]+'/'+m1[4];
-        return;
+    var host=window.location.host||'';
+    var onGhPages=host.indexOf('github.io')>=0;
+    if(attempt===0){
+      img.setAttribute('data-fb','1');
+      if(onGhPages){
+        var p1=img.src.match(/\/img\/.+$/);
+        if(p1){img.src='https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+p1[0];return;}
       }
-      e.target.src=placeholderSvg;return;
+      var m2=img.src.match(/\/gh\/([^/]+)\/([^/]+)@([^/]+)\/(.+)$/);
+      if(m2){img.src='https://raw.githubusercontent.com/'+m2[1]+'/'+m2[2]+'/'+m2[3]+'/'+m2[4];return;}
+      var m1=img.src.match(/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
+      if(m1){img.src='https://cdn.jsdelivr.net/gh/'+m1[1]+'/'+m1[2]+'@'+m1[3]+'/'+m1[4];return;}
     }
-    if(src.indexOf('cdn.jsdelivr.net')>=0){
-      var m2=src.match(/\/gh\/([^/]+)\/([^/]+)@([^/]+)\/(.+)$/);
-      if(m2){
-        e.target.src='https://raw.githubusercontent.com/'+m2[1]+'/'+m2[2]+'/'+m2[3]+'/'+m2[4];
-        return;
-      }
-      e.target.src=placeholderSvg;return;
-    }
-    var repoBase='github.io/'+cfg.repo+'/';
-    if(src.indexOf(repoBase)>=0){
-      var path=src.substring(src.indexOf(repoBase)+repoBase.length);
-      e.target.src='https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+path;
-      return;
-    }
-    e.target.src=placeholderSvg;
+    img.removeAttribute('data-fb');
+    img.src=placeholderSvg;
   }
 
   var fStatus=ref('全部');var fType=ref('');var fLib=ref('');var search=ref('');
