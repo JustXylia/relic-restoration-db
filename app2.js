@@ -268,20 +268,27 @@ function pullKeyFromGh(key,callback){
   var apiUrl='https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+cfg.dataDir+'/'+key+'.json?ref='+cfg.branch+'&t='+Date.now();
   var headers={'Accept':'application/vnd.github.v3+json'};
   if(cfg.token)headers['Authorization']='token '+cfg.token;
+  var _cbFired=false;
+  function _cbOnce(ok){
+    if(_cbFired)return;
+    _cbFired=true;
+    if(callback)callback(ok);
+  }
+  var _timeout=setTimeout(function(){_cbOnce(false);},10000);
   fetch(apiUrl,{cache:'no-store',headers:headers}).then(function(r){
     if(r.status===403){
-      if(callback)callback(false);
+      _cbOnce(false);
       return null;
     }
     if(!r.ok)throw new Error('HTTP '+r.status);
     return r.json();
   }).then(function(j){
     if(!j){
-      if(callback)callback(false);
+      _cbOnce(false);
       return;
     }
     if(!j.content){
-      if(callback)callback(false);
+      _cbOnce(false);
       return;
     }
     if(j.sha)_ghCache[key]=j.sha;
@@ -290,12 +297,12 @@ function pullKeyFromGh(key,callback){
       var serverData=JSON.parse(text);
       var merged=mergeServerData(key,serverData);
       localStorage.setItem(key,JSON.stringify(merged));
-      if(callback)callback(true);
+      _cbOnce(true);
     }catch(e){
-      if(callback)callback(false);
+      _cbOnce(false);
     }
   }).catch(function(){
-    if(callback)callback(false);
+    _cbOnce(false);
   });
 }
 
@@ -531,10 +538,16 @@ function syncAllFromServer(callback){
   _syncInProgress=true;
   var pending=_syncKeys.length;
   var done=0;
+  var _syncTimeout=setTimeout(function(){
+    _syncInProgress=false;
+    try{purgeDeletedRelics();}catch(e){}
+    if(callback)callback();
+  },12000);
   _syncKeys.forEach(function(k){
     pullKeyFromGh(k,function(ok){
       done++;
       if(done===pending){
+        clearTimeout(_syncTimeout);
         _syncInProgress=false;
         try{purgeDeletedRelics();}catch(e){}
         if(callback)callback();
@@ -2007,8 +2020,15 @@ createApp({setup(){
           if(DracoC){var draco=new DracoC();draco.setDecoderPath('draco/');loader.setDRACOLoader(draco);}
           resolveIdbUrl(glbPath).then(function(resolvedUrl){
           if(!resolvedUrl){loading3D.value=false;alert('3D模型文件未找到，可能已被清除');return;}
+          var fbUrl='';
+          if(glbPath.indexOf('idb://')===0){
+            var idbKey2=glbPath.substring(6).split('/')[1];
+            var cfg2=loadGhConfig();
+            fbUrl='https://cdn.jsdelivr.net/gh/'+cfg2.owner+'/'+cfg2.repo+'@'+cfg2.branch+'/img/3d/'+idbKey2+'.glb';
+          }
+          function tryLoad(url,fbUrl){
           var progBar=document.getElementById('viewer3d-progress');
-          loader.load(resolvedUrl,function(gltf){
+          loader.load(url,function(gltf){
             _viewer3D.model=gltf.scene;
             var box=new THREE.Box3().setFromObject(_viewer3D.model);
             var size=box.getSize(new THREE.Vector3());
@@ -2033,7 +2053,19 @@ createApp({setup(){
               if(pb)pb.style.width=pct+'%';
               if(sp)sp.textContent='加载3D模型中... '+pct+'%';
             }
-          },function(err){console.error('GLB load error:',err);loading3D.value=false;var sp=document.getElementById('viewer3d-status');if(sp)sp.textContent='3D模型加载失败: '+(err.message||err);});
+          },function(err){
+            console.error('GLB load error:',err,url);
+            if(fbUrl){
+              console.log('Trying fallback URL:',fbUrl);
+              tryLoad(fbUrl,null);
+            }else{
+              loading3D.value=false;
+              var sp=document.getElementById('viewer3d-status');
+              if(sp)sp.textContent='3D模型加载失败: '+(err.message||err);
+            }
+          });
+          }
+          tryLoad(resolvedUrl,fbUrl);
           });
         }else{loading3D.value=false;console.error('GLTFLoader not available');}
       }catch(e){console.error('3D init error:',e);loading3D.value=false;}
