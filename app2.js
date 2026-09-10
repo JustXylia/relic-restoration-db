@@ -1472,7 +1472,7 @@ createApp({setup(){
     var imgIdbKey=hasImg?'idb://imgFiles/'+newId:'';
     var imgCloudPath=hasImg?('img/stages/'+newId+'.jpg'):'';
     var glbCloudPath=hasGlb?('img/3d/'+newId+'_unrestored.glb'):'';
-    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgCloudPath:relicImg(upForm.type,seqNum),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?glbCloudPath:'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
+    var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?('idb://imgFiles/'+newId):relicImg(upForm.type,seqNum),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?('idb://glbFiles/'+newId+'_unrestored'):'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
     var uploadStatus={img:false,glb:false};
     var glbTooBig=false;
     var glbCompressing=hasGlb&&_pendingGlbBlob&&_pendingGlbBlob.size>=50*1024*1024;
@@ -1575,30 +1575,21 @@ createApp({setup(){
   function completedStageImgs(r){
     if(!r)return [];
     var list=[];
-    // Stage 1: excavated (always shown if uploaded)
+    // Stage 1: excavated (always shown if imgBefore exists)
     if(r.imgBefore){
       list.push({img:resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore),key:r.id,filter:'',label:'刚出土 · 病害记录'});
     }
-    // Stage 2: cleaned (shown if reached 待修复 or beyond)
-    if(r.status==='待修复'||r.status==='修复中'||r.status==='已修复'){
-      var cleaned=r.imgCleaned;
-      var cleanedKey=cleaned?r.id+'_cleaned':r.id;
-      var cleanedSrc=cleaned?(resolvedImgs[r.id+'_cleaned']||resolveCloudUrl(cleaned)):(resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore));
-      list.push({img:cleanedSrc,key:cleanedKey,filter:stageFilter('cleaned'),label:'清理后 · 初步处理'});
+    // Stage 2: cleaned (only shown if imgCleaned exists)
+    if(r.imgCleaned){
+      list.push({img:resolvedImgs[r.id+'_cleaned']||resolveCloudUrl(r.imgCleaned),key:r.id+'_cleaned',filter:stageFilter('cleaned'),label:'清理后 · 初步处理'});
     }
-    // Stage 3: during repair (shown if reached 修复中)
-    if(r.status==='修复中'||r.status==='已修复'){
-      var during=r.imgDuring;
-      var duringKey=during?r.id+'_during':r.id;
-      var duringSrc=during?(resolvedImgs[r.id+'_during']||resolveCloudUrl(during)):(resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore));
-      list.push({img:duringSrc,key:duringKey,filter:stageFilter('during'),label:'修复中 · 过程记录'});
+    // Stage 3: during repair (only shown if imgDuring exists)
+    if(r.imgDuring){
+      list.push({img:resolvedImgs[r.id+'_during']||resolveCloudUrl(r.imgDuring),key:r.id+'_during',filter:stageFilter('during'),label:'修复中 · 过程记录'});
     }
-    // Stage 4: after repair (shown only if 已修复)
-    if(r.status==='已修复'){
-      var after=r.imgAfter;
-      var afterKey=after?r.id+'_after':r.id;
-      var afterSrc=after?(resolvedImgs[r.id+'_after']||resolveCloudUrl(after)):(resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore));
-      list.push({img:afterSrc,key:afterKey,filter:stageFilter('after'),label:'修复后 · 修复完成'});
+    // Stage 4: after repair (only shown if imgAfter exists)
+    if(r.imgAfter){
+      list.push({img:resolvedImgs[r.id+'_after']||resolveCloudUrl(r.imgAfter),key:r.id+'_after',filter:stageFilter('after'),label:'修复后 · 修复完成'});
     }
     return list;
   }
@@ -2038,13 +2029,14 @@ createApp({setup(){
     var idbKey=sel.value.id+'_'+type;
     var blobUrl=URL.createObjectURL(file);
     var cloudPath='img/3d/'+sel.value.id+'_'+type+'.glb';
+    var idbPath='idb://glbFiles/'+idbKey;
     if(type==='restored'){
-      sel.value.glbRestored=cloudPath;
+      sel.value.glbRestored=idbPath;
       sel.value.glbRestoredName=file.name;
       sel.value.has3D=true;
       model3DMode.value='restored';
     }else{
-      sel.value.glbUnrestored=cloudPath;
+      sel.value.glbUnrestored=idbPath;
       sel.value.glbUnrestoredName=file.name;
       sel.value.has3D=true;
     }
@@ -2094,8 +2086,9 @@ createApp({setup(){
     var idbKey=relicId+'_'+field;
     var blobUrl=URL.createObjectURL(_pendingStageImgBlob);
     var cloudPath='img/stages/'+relicId+'_'+field+'.jpg';
-    // Use cloud URL for cross-device sync
-    r[field]=cloudPath;
+    var idbPath='idb://imgFiles/'+idbKey;
+    // Use idb:// path for local-first loading, cloud fallback via resolveIdbUrl
+    r[field]=idbPath;
     r.lastUpdate=new Date().toLocaleString('zh-CN');
     // Also save to IDB for local fallback
     r['_'+field+'IdbKey']=idbKey;
