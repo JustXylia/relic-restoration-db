@@ -313,25 +313,36 @@ function pushKeyToGh(key,callback){
   if(_ghCache[key])payload.sha=_ghCache[key];
 
   function doPut(sha){
-    if(sha)payload.sha=sha;
+    var p={message:payload.message,content:payload.content,branch:payload.branch};
+    if(sha)p.sha=sha;
     return fetch(url,{
       method:'PUT',
       headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
-      body:JSON.stringify(payload)
+      body:JSON.stringify(p)
+    });
+  }
+
+  function fetchShaAndRetry(){
+    return fetch(url+'?ref='+cfg.branch,{
+      headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+    }).then(function(r2){
+      if(r2.status===404){
+        return doPut(null);
+      }
+      if(!r2.ok)throw new Error('GET SHA failed: '+r2.status);
+      return r2.json();
+    }).then(function(existing){
+      if(existing&&existing.sha){
+        _ghCache[key]=existing.sha;
+        return doPut(existing.sha);
+      }
+      return doPut(null);
     });
   }
 
   doPut(_ghCache[key]).then(function(r){
-    if(r.status===409){
-      return fetch(url+'?ref='+cfg.branch,{
-        headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
-      }).then(function(r2){return r2.json();}).then(function(existing){
-        if(existing&&existing.sha){
-          _ghCache[key]=existing.sha;
-          return doPut(existing.sha);
-        }
-        throw new Error('No SHA on 409 retry');
-      });
+    if(r.status===409||r.status===422){
+      return fetchShaAndRetry();
     }
     if(!r.ok){
       return r.text().then(function(txt){
