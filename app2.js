@@ -378,13 +378,8 @@ function pushFileToGh(filePath, blob, callback){
   if(!token){if(callback)callback(false,'no token');return;}
   var reader=new FileReader();
   reader.onload=function(){
-    var bytes=new Uint8Array(reader.result);
-    var binary='';
-    var chunk=8192;
-    for(var i=0;i<bytes.length;i+=chunk){
-      binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
-    }
-    var base64=btoa(binary);
+    var dataUrl=reader.result;
+    var base64=dataUrl.substring(dataUrl.indexOf(',')+1);
     var url='https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath;
     fetch(url+'?ref='+cfg.branch,{
       headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
@@ -414,7 +409,7 @@ function pushFileToGh(filePath, blob, callback){
           return fetch(url,{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(payload2)});
         });
       }
-      if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+filePath+': '+r.status+' '+t.substring(0,100))});
+      if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+filePath+': '+r.status+' '+t.substring(0,200))});
       return r.json();
     }).then(function(){
       if(callback)callback(true,'./'+filePath);
@@ -423,7 +418,11 @@ function pushFileToGh(filePath, blob, callback){
       if(callback)callback(false,e.message);
     });
   };
-  reader.readAsArrayBuffer(blob);
+  reader.onerror=function(){
+    console.error('FileReader error for',filePath);
+    if(callback)callback(false,'FileReader error');
+  };
+  reader.readAsDataURL(blob);
 }
 
 // Sync all keys to GitHub (debounced)
