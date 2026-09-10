@@ -667,6 +667,7 @@ try{var _v=localStorage.getItem('dataVersion');if(_v!=='v28'){
   localStorage.removeItem('loginUser_v1');
   localStorage.setItem('dataVersion','v28');
 }}catch(e){}
+var _blobUrlCache={};
 function resolveCloudUrl(path){
   if(!path)return '';
   if(path.indexOf('http')===0)return path;
@@ -687,6 +688,7 @@ function resolveIdbUrl(url){
   if(url.indexOf('idb://')!==0)return Promise.resolve(resolveCloudUrl(url));
   var parts=url.substring(6).split('/');
   var store=parts[0];var key=parts[1];
+  if(_blobUrlCache[key])return Promise.resolve(_blobUrlCache[key]);
   return idbLoad(store,key).then(function(blob){
     if(!blob){
       if(store==='glbFiles'){
@@ -699,7 +701,9 @@ function resolveIdbUrl(url){
       }
       return null;
     }
-    return URL.createObjectURL(blob);
+    var blobUrl=URL.createObjectURL(blob);
+    _blobUrlCache[key]=blobUrl;
+    return blobUrl;
   });
 }
 
@@ -1266,16 +1270,29 @@ createApp({setup(){
 
   function latestImg(r){
     if(r.status==='已修复'&&r.imgAfter){
-      if(r.imgAfter.indexOf('idb://')===0)return resolvedImgs[r.id+'_after']||r.imgAfter;
+      if(r.imgAfter.indexOf('idb://')===0){
+        if(!resolvedImgs[r.id+'_after'])resolveIdbUrl(r.imgAfter).then(function(u){if(u)resolvedImgs[r.id+'_after']=u;});
+        return resolvedImgs[r.id+'_after']||'';
+      }
       return resolvedImgs[r.id+'_after']||resolveCloudUrl(r.imgAfter);
     }
     if(r.status==='修复中'&&r.imgDuring){
-      if(r.imgDuring.indexOf('idb://')===0)return resolvedImgs[r.id+'_during']||r.imgDuring;
+      if(r.imgDuring.indexOf('idb://')===0){
+        if(!resolvedImgs[r.id+'_during'])resolveIdbUrl(r.imgDuring).then(function(u){if(u)resolvedImgs[r.id+'_during']=u;});
+        return resolvedImgs[r.id+'_during']||'';
+      }
       return resolvedImgs[r.id+'_during']||resolveCloudUrl(r.imgDuring);
     }
     if((r.status==='待修复'||r.status==='修复中')&&r.imgCleaned){
-      if(r.imgCleaned.indexOf('idb://')===0)return resolvedImgs[r.id+'_cleaned']||r.imgCleaned;
+      if(r.imgCleaned.indexOf('idb://')===0){
+        if(!resolvedImgs[r.id+'_cleaned'])resolveIdbUrl(r.imgCleaned).then(function(u){if(u)resolvedImgs[r.id+'_cleaned']=u;});
+        return resolvedImgs[r.id+'_cleaned']||'';
+      }
       return resolvedImgs[r.id+'_cleaned']||resolveCloudUrl(r.imgCleaned);
+    }
+    if(r.imgBefore&&r.imgBefore.indexOf('idb://')===0){
+      if(!resolvedImgs[r.id])resolveIdbUrl(r.imgBefore).then(function(u){if(u)resolvedImgs[r.id]=u;});
+      return resolvedImgs[r.id]||'';
     }
     return resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore);
   }
@@ -1512,10 +1529,12 @@ createApp({setup(){
     relics.value.unshift(newRelic);
     var saved=loadUserRelics();saved.unshift(newRelic);saveUserRelics(saved);
     if(lib)lib.count++;
+    if(hasImg){_blobUrlCache[newId]=URL.createObjectURL(_pendingImgBlob);resolvedImgs[newId]=_blobUrlCache[newId];}
+    if(hasGlb){_blobUrlCache[newId+'_unrestored']=URL.createObjectURL(_pendingGlbBlob);}
     _pendingGlbBlob=null;_pendingImgBlob=null;
     showUploadModal.value=false;upForm.name='';upForm.era='';upForm.site='';upForm.size='';upForm.weight='';upForm.disease='';upForm.glbUrl='';upForm.glbName='';upForm.has3D=false;upForm.imgUrl='';upForm.imgName='';
     Promise.all(savePromises).then(function(){
-      resolveIdbUrl(hasImg?imgCloudPath:'').then(function(url){if(url)resolvedImgs[newId]=url;});
+      resolveIdbUrl(hasImg?('idb://imgFiles/'+newId):'').then(function(url){if(url)resolvedImgs[newId]=url;});
       var msg='上传成功！编号：'+newId;
       if(hasImg&&!uploadStatus.img)msg+='\\n⚠ 图片云同步失败，仅本地保存';
       if(hasGlb&&!uploadStatus.glb){
@@ -1572,24 +1591,28 @@ createApp({setup(){
     return r.status;
   }
   // Get all completed stage images — show images for stages that have been reached
+  function resolveImg(field,idbPath,cacheKey){
+    if(!idbPath)return '';
+    if(idbPath.indexOf('idb://')===0){
+      if(!resolvedImgs[cacheKey])resolveIdbUrl(idbPath).then(function(u){if(u)resolvedImgs[cacheKey]=u;});
+      return resolvedImgs[cacheKey]||'';
+    }
+    return resolveCloudUrl(idbPath);
+  }
   function completedStageImgs(r){
     if(!r)return [];
     var list=[];
-    // Stage 1: excavated (always shown if imgBefore exists)
     if(r.imgBefore){
-      list.push({img:resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore),key:r.id,filter:'',label:'刚出土 · 病害记录'});
+      list.push({img:resolveImg('imgBefore',r.imgBefore,r.id),key:r.id,filter:'',label:'刚出土 · 病害记录'});
     }
-    // Stage 2: cleaned (only shown if imgCleaned exists)
     if(r.imgCleaned){
-      list.push({img:resolvedImgs[r.id+'_cleaned']||resolveCloudUrl(r.imgCleaned),key:r.id+'_cleaned',filter:stageFilter('cleaned'),label:'清理后 · 初步处理'});
+      list.push({img:resolveImg('imgCleaned',r.imgCleaned,r.id+'_cleaned'),key:r.id+'_cleaned',filter:stageFilter('cleaned'),label:'清理后 · 初步处理'});
     }
-    // Stage 3: during repair (only shown if imgDuring exists)
     if(r.imgDuring){
-      list.push({img:resolvedImgs[r.id+'_during']||resolveCloudUrl(r.imgDuring),key:r.id+'_during',filter:stageFilter('during'),label:'修复中 · 过程记录'});
+      list.push({img:resolveImg('imgDuring',r.imgDuring,r.id+'_during'),key:r.id+'_during',filter:stageFilter('during'),label:'修复中 · 过程记录'});
     }
-    // Stage 4: after repair (only shown if imgAfter exists)
     if(r.imgAfter){
-      list.push({img:resolvedImgs[r.id+'_after']||resolveCloudUrl(r.imgAfter),key:r.id+'_after',filter:stageFilter('after'),label:'修复后 · 修复完成'});
+      list.push({img:resolveImg('imgAfter',r.imgAfter,r.id+'_after'),key:r.id+'_after',filter:stageFilter('after'),label:'修复后 · 修复完成'});
     }
     return list;
   }
@@ -2028,6 +2051,7 @@ createApp({setup(){
     if(file.size>100*1024*1024){alert('GLB文件过大（超过100MB），请先压缩');e.target.value='';return;}
     var idbKey=sel.value.id+'_'+type;
     var blobUrl=URL.createObjectURL(file);
+    _blobUrlCache[idbKey]=blobUrl;
     var cloudPath='img/3d/'+sel.value.id+'_'+type+'.glb';
     var idbPath='idb://glbFiles/'+idbKey;
     if(type==='restored'){
@@ -2085,6 +2109,7 @@ createApp({setup(){
     var relicId=r.id;
     var idbKey=relicId+'_'+field;
     var blobUrl=URL.createObjectURL(_pendingStageImgBlob);
+    _blobUrlCache[idbKey]=blobUrl;
     var cloudPath='img/stages/'+relicId+'_'+field+'.jpg';
     var idbPath='idb://imgFiles/'+idbKey;
     // Use idb:// path for local-first loading, cloud fallback via resolveIdbUrl
