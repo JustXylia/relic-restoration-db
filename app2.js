@@ -1396,7 +1396,7 @@ createApp({setup(){
     var savePromises=[];
     if(hasGlb){
       savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
-      if(_pendingGlbBlob.size<50*1024*1024){
+      if(_pendingGlbBlob.size<100*1024*1024){
         savePromises.push(new Promise(function(res){
           pushFileToGh(glbCloudPath,_pendingGlbBlob,function(ok,url){uploadStatus.glb=ok;res();});
         }));
