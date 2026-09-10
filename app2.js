@@ -260,12 +260,21 @@ function mergeServerData(key, serverData){
   return localData;
 }
 
-// Pull single key from GitHub (read-only, no token needed for public repos)
+// Pull single key from GitHub via API (more reliable in China than raw URL)
 function pullKeyFromGh(key,callback){
-  fetch(getGhRawUrl(key),{cache:'no-store'}).then(function(r){
+  var cfg=loadGhConfig();
+  var apiUrl='https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+cfg.dataDir+'/'+key+'.json?ref='+cfg.branch+'&t='+Date.now();
+  var headers={'Accept':'application/vnd.github.v3+json'};
+  if(cfg.token)headers['Authorization']='token '+cfg.token;
+  fetch(apiUrl,{cache:'no-store',headers:headers}).then(function(r){
     if(!r.ok)throw new Error('HTTP '+r.status);
-    return r.text();
-  }).then(function(text){
+    return r.json();
+  }).then(function(j){
+    if(!j||!j.content){
+      if(callback)callback(false);
+      return;
+    }
+    var text=decodeURIComponent(escape(atob(j.content.replace(/\n/g,''))));
     try{
       var serverData=JSON.parse(text);
       var merged=mergeServerData(key,serverData);
@@ -545,7 +554,8 @@ function resolveCloudUrl(path){
   if(path.indexOf('idb://')===0)return null;
   if(path.indexOf('img/')===0||path.indexOf('./img/')===0){
     var cfg=loadGhConfig();
-    return 'https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+path.replace(/^\.\//,'');
+    var cleanPath=path.replace(/^\.\//,'');
+    return 'https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+cleanPath;
   }
   return path;
 }
@@ -1128,10 +1138,17 @@ createApp({setup(){
     var src=e.target.src||'';
     if(src.indexOf('raw.githubusercontent.com')>=0){e.target.src=placeholderSvg;return;}
     var cfg=loadGhConfig();
+    if(src.indexOf('cdn.jsdelivr.net')>=0){
+      var m=src.match(/\/gh\/([^/]+)\/([^/]+)@([^/]+)\/(.+)$/);
+      if(m){
+        e.target.src='https://raw.githubusercontent.com/'+m[1]+'/'+m[2]+'/'+m[3]+'/'+m[4];
+        return;
+      }
+    }
     var repoBase='github.io/'+cfg.repo+'/';
     if(src.indexOf(repoBase)>=0){
       var path=src.substring(src.indexOf(repoBase)+repoBase.length);
-      e.target.src='https://raw.githubusercontent.com/'+cfg.owner+'/'+cfg.repo+'/'+cfg.branch+'/'+path;
+      e.target.src='https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+path;
       return;
     }
     e.target.src=placeholderSvg;
