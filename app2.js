@@ -193,7 +193,6 @@ function mergeServerData(key, serverData){
     return serverData;
   }
   if(!serverData||(Array.isArray(serverData)&&serverData.length===0)||(typeof serverData==='object'&&Object.keys(serverData).length===0)){
-    if(key===USER_RELICS_KEY)return serverData;
     return localData;
   }
   
