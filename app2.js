@@ -405,6 +405,15 @@ function pushFileToGh(filePath, blob, callback){
         body:JSON.stringify(payload)
       });
     }).then(function(r){
+      if(r.status===409||r.status===422){
+        return fetch(url+'?ref='+cfg.branch,{
+          headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+        }).then(function(r2){return r2.json();}).then(function(existing2){
+          var payload2={message:'Re-upload '+filePath,content:base64,branch:cfg.branch};
+          if(existing2&&existing2.sha)payload2.sha=existing2.sha;
+          return fetch(url,{method:'PUT',headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify(payload2)});
+        });
+      }
       if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+filePath+': '+r.status+' '+t.substring(0,100))});
       return r.json();
     }).then(function(){
@@ -584,10 +593,6 @@ function resolveCloudUrl(path){
   if(path.indexOf('idb://')===0)return null;
   if(path.indexOf('img/')===0||path.indexOf('./img/')===0){
     var cleanPath=path.replace(/^\.\//,'');
-    var host=window.location.host||'';
-    if(host.indexOf('github.io')>=0){
-      return './'+cleanPath;
-    }
     var cfg=loadGhConfig();
     return 'https://cdn.jsdelivr.net/gh/'+cfg.owner+'/'+cfg.repo+'@'+cfg.branch+'/'+cleanPath;
   }
@@ -1391,30 +1396,35 @@ createApp({setup(){
     var imgCloudPath=hasImg?('img/stages/'+newId+'.jpg'):'';
     var glbCloudPath=hasGlb?('img/3d/'+newId+'_unrestored.glb'):'';
     var newRelic={id:newId,name:upForm.name||('代号'+seq),type:upForm.type,imgBefore:hasImg?imgCloudPath:relicImg(upForm.type,seqNum),imgCleaned:'',imgDuring:'',imgAfter:'',library:upForm.library,site:upForm.site||'待补充',era:upForm.era||'待确认',size:upForm.size||('高'+(Math.floor(Math.random()*30)+15)+'cm'),weight:upForm.weight||((Math.random()*2+0.3).toFixed(2)+'kg'),uploadedBy:currentUser.name,uploadTime:new Date().toLocaleString('zh-CN'),status:'已上传',restorer:'',progress:0,deadline:'',lastUpdate:'',disease:upForm.disease||'待记录',has3D:hasGlb,glbRestored:'',glbUnrestored:hasGlb?glbCloudPath:'',glbRestoredName:'',glbUnrestoredName:hasGlb?upForm.glbName:'',userUploaded:true};
+    var uploadStatus={img:false,glb:false};
     var savePromises=[];
     if(hasGlb){
       savePromises.push(idbSave('glbFiles',newId+'_unrestored',_pendingGlbBlob).catch(function(e){console.warn('GLB IDB save failed:',e);}));
       if(_pendingGlbBlob.size<50*1024*1024){
         savePromises.push(new Promise(function(res){
-          pushFileToGh(glbCloudPath,_pendingGlbBlob,function(ok,url){res();});
+          pushFileToGh(glbCloudPath,_pendingGlbBlob,function(ok,url){uploadStatus.glb=ok;res();});
         }));
       }
     }
     if(hasImg){
       savePromises.push(idbSave('imgFiles',newId,_pendingImgBlob).catch(function(e){console.warn('Img IDB save failed:',e);}));
       savePromises.push(new Promise(function(res){
-        pushFileToGh(imgCloudPath,_pendingImgBlob,function(ok,url){res();});
+        pushFileToGh(imgCloudPath,_pendingImgBlob,function(ok,url){uploadStatus.img=ok;res();});
       }));
     }
-    Promise.all(savePromises).then(function(){
-      if(hasImg)resolveIdbUrl(imgIdbKey).then(function(url){if(url)resolvedImgs[newId]=url;});
-    });
     relics.value.unshift(newRelic);
     var saved=loadUserRelics();saved.unshift(newRelic);saveUserRelics(saved);
     if(lib)lib.count++;
     _pendingGlbBlob=null;_pendingImgBlob=null;
     showUploadModal.value=false;upForm.name='';upForm.era='';upForm.site='';upForm.size='';upForm.weight='';upForm.disease='';upForm.glbUrl='';upForm.glbName='';upForm.has3D=false;upForm.imgUrl='';upForm.imgName='';
-    alert('上传成功！编号：'+newId);
+    Promise.all(savePromises).then(function(){
+      resolveIdbUrl(hasImg?imgCloudPath:'').then(function(url){if(url)resolvedImgs[newId]=url;});
+      var msg='上传成功！编号：'+newId;
+      if(hasImg&&!uploadStatus.img)msg+='\\n⚠ 图片云同步失败，仅本地保存';
+      if(hasGlb&&!uploadStatus.glb)msg+='\\n⚠ 三维模型云同步失败，仅本地保存';
+      if((!hasImg||uploadStatus.img)&&(!hasGlb||uploadStatus.glb))msg+='，云同步完成';
+      alert(msg);
+    });
   }
 
   var showAssignModal=ref(false);var assignTarget=ref(null);var assignForm=reactive({restorer:'',deadline:'',priority:'中',req:''});
