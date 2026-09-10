@@ -533,6 +533,19 @@ function syncToServer(){
     });
   },500);
 }
+function forcePushPending(){
+  if(!hasGhToken())return;
+  _syncKeys.forEach(function(k){
+    var cloudKey=_cloudKeyMap[k]||k;
+    var val=localStorage.getItem(cloudKey);
+    if(val===null)val=localStorage.getItem(k);
+    if(val===null)return;
+    if(_lastPushed[k]===val)return;
+    pushKeyToGh(k,function(ok){
+      if(ok)_lastPushed[k]=val;
+    },val);
+  });
+}
 
 // Pull all keys from GitHub
 function syncAllFromServer(callback){
@@ -1116,9 +1129,10 @@ createApp({setup(){
         rebuildRelicList();
       }catch(e){console.warn('Init callback error:',e);}
     });
-    // Periodic sync every 15s — pull updates from other devices and rebuild UI
+    // Periodic sync every 15s — push pending + pull updates from other devices and rebuild UI
     setInterval(function(){
       if(!loggedIn.value)return;
+      forcePushPending();
       syncAllFromServer(function(){
         rebuildRelicList();
       });
@@ -1416,6 +1430,7 @@ createApp({setup(){
 
   function sc(s){return scopedRelics.value.filter(function(r){return r.status===s;}).length;}
   function sb(s){return{'待上传':'b-s1','已上传':'b-s2','待修复':'b-s3','修复中':'b-s4','已修复':'b-s5'}[s]||'';}
+  function maskName(name){if(!name)return'';if(name.length<=1)return name;return name[0]+'**';}
   var repairingCount=computed(function(){return scopedRelics.value.filter(function(r){return r.status==='修复中';}).length;});
   var pendingCount=computed(function(){return scopedRelics.value.filter(function(r){return r.status==='已上传';}).length;});
 
@@ -2323,5 +2338,6 @@ createApp({setup(){
     resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,stageImgFileName,onStageImgUpload,confirmStageImg,cancelStageImg,
     relicFilter,relicStyle,relicStyleThumb,stageFilter,
-    ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
+    ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll,
+    maskName};
 }}).mount('#app');
