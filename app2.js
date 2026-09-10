@@ -377,9 +377,14 @@ function pushFileToGh(filePath, blob, callback){
   if(!token){if(callback)callback(false,'no token');return;}
   var reader=new FileReader();
   reader.onload=function(){
-    var base64=btoa(reader.result);
+    var bytes=new Uint8Array(reader.result);
+    var binary='';
+    var chunk=8192;
+    for(var i=0;i<bytes.length;i+=chunk){
+      binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
+    }
+    var base64=btoa(binary);
     var url='https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath;
-    // Get existing SHA first
     fetch(url+'?ref='+cfg.branch,{
       headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
     }).then(function(r){
@@ -407,7 +412,7 @@ function pushFileToGh(filePath, blob, callback){
       if(callback)callback(false,e.message);
     });
   };
-  reader.readAsBinaryString(blob);
+  reader.readAsArrayBuffer(blob);
 }
 
 // Sync all keys to GitHub (debounced)
@@ -588,7 +593,17 @@ function resolveIdbUrl(url){
   var parts=url.substring(6).split('/');
   var store=parts[0];var key=parts[1];
   return idbLoad(store,key).then(function(blob){
-    if(!blob)return null;
+    if(!blob){
+      if(store==='glbFiles'){
+        var cloudPath='img/3d/'+key+'.glb';
+        return resolveCloudUrl(cloudPath);
+      }
+      if(store==='imgFiles'){
+        var cloudPath2='img/stages/'+key+'.jpg';
+        return resolveCloudUrl(cloudPath2);
+      }
+      return null;
+    }
     return URL.createObjectURL(blob);
   });
 }
