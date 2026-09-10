@@ -683,6 +683,25 @@ function resolveCloudUrl(path){
   }
   return path;
 }
+function idbCloudFallback(store,key){
+  if(store==='glbFiles')return resolveCloudUrl('img/3d/'+key+'.glb');
+  if(store==='imgFiles')return resolveCloudUrl('img/stages/'+key+'.jpg');
+  return '';
+}
+function resolveIdbUrlSync(url){
+  if(!url)return '';
+  if(url.indexOf('idb://')!==0)return resolveCloudUrl(url);
+  var parts=url.substring(6).split('/');
+  var store=parts[0];var key=parts[1];
+  if(_blobUrlCache[key])return _blobUrlCache[key];
+  idbLoad(store,key).then(function(blob){
+    if(blob){
+      var blobUrl=URL.createObjectURL(blob);
+      _blobUrlCache[key]=blobUrl;
+    }
+  });
+  return idbCloudFallback(store,key);
+}
 function resolveIdbUrl(url){
   if(!url)return Promise.resolve(null);
   if(url.indexOf('idb://')!==0)return Promise.resolve(resolveCloudUrl(url));
@@ -691,15 +710,7 @@ function resolveIdbUrl(url){
   if(_blobUrlCache[key])return Promise.resolve(_blobUrlCache[key]);
   return idbLoad(store,key).then(function(blob){
     if(!blob){
-      if(store==='glbFiles'){
-        var cloudPath='img/3d/'+key+'.glb';
-        return resolveCloudUrl(cloudPath);
-      }
-      if(store==='imgFiles'){
-        var cloudPath2='img/stages/'+key+'.jpg';
-        return resolveCloudUrl(cloudPath2);
-      }
-      return null;
+      return idbCloudFallback(store,key);
     }
     var blobUrl=URL.createObjectURL(blob);
     _blobUrlCache[key]=blobUrl;
@@ -1278,28 +1289,28 @@ createApp({setup(){
   function latestImg(r){
     if(r.status==='已修复'&&r.imgAfter){
       if(r.imgAfter.indexOf('idb://')===0){
-        if(!resolvedImgs[r.id+'_after'])resolveIdbUrl(r.imgAfter).then(function(u){if(u)resolvedImgs[r.id+'_after']=u;});
-        return resolvedImgs[r.id+'_after']||'';
+        if(!resolvedImgs[r.id+'_after'])resolvedImgs[r.id+'_after']=resolveIdbUrlSync(r.imgAfter);
+        return resolvedImgs[r.id+'_after'];
       }
       return resolvedImgs[r.id+'_after']||resolveCloudUrl(r.imgAfter);
     }
     if(r.status==='修复中'&&r.imgDuring){
       if(r.imgDuring.indexOf('idb://')===0){
-        if(!resolvedImgs[r.id+'_during'])resolveIdbUrl(r.imgDuring).then(function(u){if(u)resolvedImgs[r.id+'_during']=u;});
-        return resolvedImgs[r.id+'_during']||'';
+        if(!resolvedImgs[r.id+'_during'])resolvedImgs[r.id+'_during']=resolveIdbUrlSync(r.imgDuring);
+        return resolvedImgs[r.id+'_during'];
       }
       return resolvedImgs[r.id+'_during']||resolveCloudUrl(r.imgDuring);
     }
     if((r.status==='待修复'||r.status==='修复中')&&r.imgCleaned){
       if(r.imgCleaned.indexOf('idb://')===0){
-        if(!resolvedImgs[r.id+'_cleaned'])resolveIdbUrl(r.imgCleaned).then(function(u){if(u)resolvedImgs[r.id+'_cleaned']=u;});
-        return resolvedImgs[r.id+'_cleaned']||'';
+        if(!resolvedImgs[r.id+'_cleaned'])resolvedImgs[r.id+'_cleaned']=resolveIdbUrlSync(r.imgCleaned);
+        return resolvedImgs[r.id+'_cleaned'];
       }
       return resolvedImgs[r.id+'_cleaned']||resolveCloudUrl(r.imgCleaned);
     }
     if(r.imgBefore&&r.imgBefore.indexOf('idb://')===0){
-      if(!resolvedImgs[r.id])resolveIdbUrl(r.imgBefore).then(function(u){if(u)resolvedImgs[r.id]=u;});
-      return resolvedImgs[r.id]||'';
+      if(!resolvedImgs[r.id])resolvedImgs[r.id]=resolveIdbUrlSync(r.imgBefore);
+      return resolvedImgs[r.id];
     }
     return resolvedImgs[r.id]||resolveCloudUrl(r.imgBefore);
   }
@@ -1601,8 +1612,8 @@ createApp({setup(){
   function resolveImg(field,idbPath,cacheKey){
     if(!idbPath)return '';
     if(idbPath.indexOf('idb://')===0){
-      if(!resolvedImgs[cacheKey])resolveIdbUrl(idbPath).then(function(u){if(u)resolvedImgs[cacheKey]=u;});
-      return resolvedImgs[cacheKey]||'';
+      if(!resolvedImgs[cacheKey])resolvedImgs[cacheKey]=resolveIdbUrlSync(idbPath);
+      return resolvedImgs[cacheKey];
     }
     return resolveCloudUrl(idbPath);
   }
