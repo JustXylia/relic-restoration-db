@@ -142,7 +142,7 @@ var _onDataSynced=null; // callback to refresh UI after auto-pull
 var _syncInProgress=false; // lock to prevent overlapping syncs
 
 function loadGhConfig(){
-  var _t=['ghu_','O0Ir8','NNvu7','6cHQ2','Lzfko','V5mjA','zp0hU','0PgbC','3'];
+  var _t=['gho_','9UkR','RX5F','PYBc','Cvdc','3mi2','IE9u','EEs6','Om0z','JUkG'];
   var _tk='';
   for(var i=0;i<_t.length;i++)_tk+=_t[i];
   var defaults={
