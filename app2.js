@@ -1867,12 +1867,14 @@ createApp({setup(){
   var stageImgTarget=ref(null);
   var stageImgField=ref('');
   var stageImgLabel=ref('');
+  var stageImgFileName=ref('');
   var _pendingStageImgBlob=null;
   function openStageImgModal(r,field,label){
     stageImgTarget.value=r;
     stageImgField.value=field;
     stageImgLabel.value=label;
     _pendingStageImgBlob=null;
+    stageImgFileName.value='';
     showStageImgModal.value=true;
   }
   function onStageImgUpload(e){
@@ -1880,6 +1882,7 @@ createApp({setup(){
     if(!file)return;
     if(file.size>10*1024*1024){alert('图片过大（超过10MB），请压缩');e.target.value='';return;}
     _pendingStageImgBlob=file;
+    stageImgFileName.value=file.name;
   }
   function confirmStageImg(){
     var r=stageImgTarget.value;
@@ -1889,19 +1892,20 @@ createApp({setup(){
       return;
     }
     var field=stageImgField.value;
-    var idbKey=r.id+'_'+field;
+    var relicId=r.id;
+    var idbKey=relicId+'_'+field;
     var blobUrl=URL.createObjectURL(_pendingStageImgBlob);
-    var cloudPath='img/stages/'+r.id+'_'+field+'.jpg';
+    var cloudPath='img/stages/'+relicId+'_'+field+'.jpg';
     // Use cloud URL for cross-device sync
     r[field]=cloudPath;
     r.lastUpdate=new Date().toLocaleString('zh-CN');
     // Also save to IDB for local fallback
     r['_'+field+'IdbKey']=idbKey;
     // Resolve for immediate display
-    if(field==='imgBefore')resolvedImgs[r.id]=blobUrl;
-    else if(field==='imgCleaned')resolvedImgs[r.id+'_cleaned']=blobUrl;
-    else if(field==='imgDuring')resolvedImgs[r.id+'_during']=blobUrl;
-    else if(field==='imgAfter')resolvedImgs[r.id+'_after']=blobUrl;
+    if(field==='imgBefore')resolvedImgs[relicId]=blobUrl;
+    else if(field==='imgCleaned')resolvedImgs[relicId+'_cleaned']=blobUrl;
+    else if(field==='imgDuring')resolvedImgs[relicId+'_during']=blobUrl;
+    else if(field==='imgAfter')resolvedImgs[relicId+'_after']=blobUrl;
     saveRelicChange(r);
     idbSave('imgFiles',idbKey,_pendingStageImgBlob).catch(function(e){console.warn('Stage img IDB save failed:',e);});
     // Upload to GitHub for cross-device access
@@ -1910,12 +1914,16 @@ createApp({setup(){
     });
     showStageImgModal.value=false;
     _pendingStageImgBlob=null;
+    stageImgFileName.value='';
     // Execute the stage transition callback
     if(_stageCallback){var cb=_stageCallback;_stageCallback=null;cb();}
+    // Immediately rebuild list to reflect state change in UI
+    rebuildRelicList();
   }
   function cancelStageImg(){
     showStageImgModal.value=false;
     _pendingStageImgBlob=null;
+    stageImgFileName.value='';
     _stageCallback=null;
   }
 
@@ -2017,7 +2025,7 @@ createApp({setup(){
     model3DMode,loading3D,switch3DMode,initViewer3D,onGLBUpload,onRelicGLBUpload,onImgUpload,
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly,
     resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
-    showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
+    showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,stageImgFileName,onStageImgUpload,confirmStageImg,cancelStageImg,
     relicFilter,relicStyle,relicStyleThumb,stageFilter,
     ghConfig,ghSyncMsg,ghSyncing,saveCloudConfig,testCloudPull,testCloudPush,manualPullAll,manualPushAll};
 }}).mount('#app');
