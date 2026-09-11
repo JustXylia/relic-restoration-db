@@ -1064,7 +1064,7 @@ function genUsers(){
     var idx=i+1;
     var isEarly=idx<=5;
     var lastLogin=isEarly?'2026-08-2'+(idx%3)+' '+String((idx%12)+8).padStart(2,'0')+':00':'2026-08-2'+(idx%3)+' '+String((idx%12)+8).padStart(2,'0')+':00';
-    users.push({id:'U'+String(idx).padStart(3,'0'),name:d.name,workId:d.workId,nickname:d.nickname,roleId:d.role,roleName:d.role,department:d.dept,phone:d.phone,status:'正常',lastLogin:lastLogin,scope:d.scope,perms:{view:true,edit:d.role.indexOf('修复')>=0||d.role==='系统管理员',delete:d.role==='系统管理员',audit:d.role.indexOf('管理')>=0||d.role.indexOf('主任')>=0,assign:d.role.indexOf('管理')>=0||d.role.indexOf('主任')>=0}});
+    users.push({id:'U'+String(idx).padStart(3,'0'),name:d.name,workId:d.workId,nickname:d.nickname,roleId:d.role,roleName:d.role,department:d.dept,phone:d.phone,status:'正常',lastLogin:lastLogin,scope:d.scope,perms:{view:true,edit:d.role.indexOf('修复')>=0||d.role==='系统管理员',delete:d.role==='系统管理员'||d.role.indexOf('修复')>=0,audit:d.role.indexOf('管理')>=0||d.role.indexOf('主任')>=0,assign:d.role.indexOf('管理')>=0||d.role.indexOf('主任')>=0}});
   }
   return users;
 }
@@ -1184,7 +1184,7 @@ createApp({setup(){
   var rolePerms={
     '系统管理员':{view:true,edit:true,delete:true,audit:true,assign:true,manageUsers:true,viewStats:true,viewAI:true,dataScope:'all'},
     '修复委员会主任':{view:true,edit:true,delete:false,audit:true,assign:true,manageUsers:false,viewStats:true,viewAI:true,dataScope:'all'},
-    '修复师':{view:true,edit:true,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:true,dataScope:'assigned'},
+    '修复师':{view:true,edit:true,delete:true,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:true,dataScope:'assigned'},
     '保管员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'assigned'},
     '研究人员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'readonly'}
   };
