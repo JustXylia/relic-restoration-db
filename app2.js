@@ -1557,7 +1557,7 @@ createApp({setup(){
     saveRelicChange(r);
     showEditRestorerModal.value=false;
   }
-  function approveUser(){var u=auditTarget.value;u.scope=auditForm.scope;u.perms=JSON.parse(JSON.stringify(auditForm.perms));u.status='正常';u.roleId=u.roleId||'restorer';var role=roles.find(function(r){return r.id===u.roleId;});if(role)u.roleName=role.name;u.lastLogin='未登录';u.nickname=u.name;allUsers.value.push(u);saveAllUsers(allUsers.value);var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);showAuditModal.value=false;var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+u.name+'」审核通过');}
+  function approveUser(){var u=auditTarget.value;u.scope=auditForm.scope;u.perms=JSON.parse(JSON.stringify(auditForm.perms));u.status='正常';u.roleId=u.roleId||'restorer';var role=roles.find(function(r){return r.id===u.roleId;});if(role)u.roleName=role.name;u.lastLogin='未登录';u.nickname=u.name;allUsers.value.push(u);saveAllUsers(allUsers.value);var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);showAuditModal.value=false;var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+maskName(u.name)+'」审核通过');}
 
   var showLibModal=ref(false);var newLib=reactive({name:'',prefix:'',desc:''});
   function createLib(){if(!newLib.name||!newLib.prefix){alert('请填写名称和前缀');return;}
@@ -1656,7 +1656,7 @@ createApp({setup(){
     r.lastUpdate=new Date().toLocaleString('zh-CN');
     saveRelicChange(r);
     showAssignModal.value=false;
-    alert('\u5df2\u5c06\u7f16\u53f7 '+r.id+' \u5206\u914d\u7ed9\u4fee\u590d\u5e08 '+assignForm.restorer);
+    alert('\u5df2\u5c06\u7f16\u53f7 '+r.id+' \u5206\u914d\u7ed9\u4fee\u590d\u5e08 '+maskName(assignForm.restorer));
   }
 
   var traceSearch=ref('');var traceResult=ref(null);
@@ -1801,7 +1801,7 @@ createApp({setup(){
   var permList=[{key:'view',label:'查看文物数据'},{key:'edit',label:'编辑文物信息'},{key:'delete',label:'删除文物'},{key:'audit',label:'审核上传数据'},{key:'assign',label:'分配修复任务'}];
   var auditForm=reactive({scope:'全部文物',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
   function openAudit(u){auditTarget.value=u;auditForm.scope='全部文物';auditForm.perms={view:true,edit:false,delete:false,audit:false,assign:false};showAuditModal.value=true;}
-  function rejectUser(u){var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+u.name+'」的注册申请已驳回');}
+  function rejectUser(u){var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+maskName(u.name)+'」的注册申请已驳回');}
   function rejectFromAudit(){if(auditTarget.value){rejectUser(auditTarget.value);showAuditModal.value=false;}}
 
   var showPermModal=ref(false);var permTarget=ref(null);
