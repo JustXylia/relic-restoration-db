@@ -1382,7 +1382,25 @@ createApp({setup(){
       img.setAttribute('data-fb','1');
       var m2=img.src.match(/\/gh\/([^/]+)\/([^/]+)@([^/]+)\/(.+)$/);
       if(m2){
-        img.src='https://api.github.com/repos/'+m2[1]+'/'+m2[2]+'/contents/'+m2[4]+'?ref='+m2[3];
+        var apiUrl='https://api.github.com/repos/'+m2[1]+'/'+m2[2]+'/contents/'+m2[4]+'?ref='+m2[3];
+        fetch(apiUrl,{headers:{'Accept':'application/vnd.github.v3+json','Authorization':'token '+cfg.token}}).then(function(r){return r.json();}).then(function(j){
+          if(j&&j.content){
+            var raw=atob(j.content.replace(/\n/g,''));
+            var arr=new Uint8Array(raw.length);
+            for(var i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+            var blob=new Blob([arr],{type:'image/jpeg'});
+            var blobUrl=URL.createObjectURL(blob);
+            img.removeAttribute('data-fb');
+            img.src=blobUrl;
+          }else{
+            img.removeAttribute('data-fb');
+            img.src=placeholderSvg;
+          }
+        }).catch(function(){
+          img.removeAttribute('data-fb');
+          img.src=placeholderSvg;
+        });
+        img.src=placeholderSvg;
         return;
       }
     }
