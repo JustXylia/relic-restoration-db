@@ -1152,7 +1152,7 @@ createApp({setup(){
       currentUser.roleName=saved.roleName||'';
       currentUser.workId=saved.workId||'';
       currentUser.scope=saved.scope||'';
-      currentUser.perms=saved.perms||rolePerms['研究人员'];
+      currentUser.perms=rolePerms[saved.roleName]||saved.perms||rolePerms['研究人员'];
       loggedIn.value=true;
       nextTick(function(){setTimeout(function(){initCharts();},600);});
     }
