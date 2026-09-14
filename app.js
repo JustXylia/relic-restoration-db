@@ -1512,7 +1512,9 @@ createApp({setup(){
   var exportProgress=ref(0);
 
   function toggleExportMode(){
-    if(!canExport.value&&currentUser.roleName!=='系统管理员'){
+    // 系统管理员和有导出权限的角色可以使用批量导出
+    var hasPermission = currentUser.roleName==='系统管理员' || (currentUser.perms && currentUser.perms.canExport);
+    if(!hasPermission){
       alert('权限不足：您没有批量导出的权限，请联系管理员分配。');
       return;
     }
