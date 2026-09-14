@@ -3,12 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>文物修复数据库 — 区域文物管控平台</title>
+<title>文物数字资产库系统</title>
 <script src="vue.min.js?v=20260825" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body,div,span,p,h1,h2,h3,h4,h5,h6,a,button,label,td,th,li{-webkit-user-select:none;-moz-user-select:none;user-select:none}
-input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}
 :root{
   --c-primary:#0F2A4A;--c-primary-2:#1B3A5C;--c-primary-3:#2E5C8A;--c-accent:#2563EB;--c-accent-lt:#DBEAFE;
   --c-bg:#EFF4FA;--c-card:#FFFFFF;--c-text:#0F172A;--c-text-2:#475569;--c-text-3:#94A3B8;
@@ -193,7 +191,7 @@ tr:hover td{background:#F8FAFC}
   <div class="auth-bg"></div>
   <div class="auth-left">
     <svg viewBox="0 0 48 48" fill="none" width="48" height="48"><rect x="8" y="6" width="32" height="36" rx="2" fill="#2563EB" opacity=".2"/><rect x="8" y="6" width="32" height="36" rx="2" stroke="#60A5FA" stroke-width="2.5"/><line x1="16" y1="6" x2="16" y2="2" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/><line x1="32" y1="6" x2="32" y2="2" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/><line x1="16" y1="18" x2="32" y2="18" stroke="#60A5FA" stroke-width="2"/><line x1="16" y1="26" x2="32" y2="26" stroke="#60A5FA" stroke-width="2"/><line x1="16" y1="34" x2="26" y2="34" stroke="#60A5FA" stroke-width="2"/></svg>
-    <h1>文物修复数据库<br>区域文物管控平台</h1>
+    <h1>文物数字资产库系统</h1>
     <p class="sub">移动端采集 · Web端管控 · 五状态全流程 · 责任链到人</p>
   </div>
   <div class="auth-right">
@@ -226,10 +224,10 @@ tr:hover td{background:#F8FAFC}
   <div class="sidebar">
     <div class="logo">
       <svg viewBox="0 0 48 48" fill="none"><rect x="8" y="6" width="32" height="36" rx="2" fill="#2563EB" opacity=".2"/><rect x="8" y="6" width="32" height="36" rx="2" stroke="#60A5FA" stroke-width="2.5"/><line x1="16" y1="6" x2="16" y2="2" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/><line x1="32" y1="6" x2="32" y2="2" stroke="#60A5FA" stroke-width="2.5" stroke-linecap="round"/><line x1="16" y1="18" x2="32" y2="18" stroke="#60A5FA" stroke-width="2"/><line x1="16" y1="26" x2="32" y2="26" stroke="#60A5FA" stroke-width="2"/><line x1="16" y1="34" x2="26" y2="34" stroke="#60A5FA" stroke-width="2"/></svg>
-      <h2>文物修复数据库</h2>
-      <p>区域文物管控平台</p>
+      <h2>文物数字资产库系统</h2>
+      <p>数字资产管理平台</p>
     </div>
-    <div class="nav-section">数据概览</div>
+    <div class="nav-section">概览</div>
     <div class="nav-item" :class="{active:page==='dashboard'}" @click="nav('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>总览面板</span></div>
     <div class="nav-section">文物管理</div>
     <div class="nav-item" :class="{active:page==='thematic'}" @click="nav('thematic')" v-if="canAssign || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg><span>专题库管理</span></div>
@@ -239,17 +237,16 @@ tr:hover td{background:#F8FAFC}
     <div class="nav-item" :class="{active:page==='monitor'}" @click="nav('monitor')" v-if="canEdit || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l4-4 4 4 4-6 4 6"/><path d="M3 3v18h18"/></svg><span>进度监控</span></div>
     <div class="nav-item" :class="{active:page==='traceability'}" @click="nav('traceability')" v-if="canAudit || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.72-1.71"/></svg><span>责任链追溯</span></div>
     <div class="nav-item" :class="{active:page==='aiRepair'}" @click="nav('aiRepair')" v-if="canViewAI"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/></svg><span>AI修复分析</span></div>
-    <div class="nav-section">系统权限</div>
+    <div class="nav-section">系统</div>
     <div class="nav-item" :class="{active:page==='statistics'}" @click="nav('statistics')" v-if="canViewStats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计分析</span></div>
     <div class="nav-item" :class="{active:page==='accounts'}" @click="nav('accounts')" v-if="canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span>用户与权限</span></div>
-    <div class="nav-item" :class="{active:page==='cloud'}" @click="nav('cloud')" v-if="canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg><span>云端同步</span></div>
   </div>
   <div class="main">
     <div class="topbar">
       <div class="crumb">首页 <b>/ {{pageTitle}}</b></div>
       <div class="actions">
         <div class="icon-btn" @click="showNoti=!showNoti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="badge-dot" v-if="notifications.length"></span></div>
-        <div class="user-chip" style="flex-direction:row;align-items:center;gap:8px" @click="openNicknameModal" title="点击修改个人设置"><div class="avatar">{{(currentUser.nickname||currentUser.name||'?')[0]}}</div><div style="display:flex;flex-direction:column;line-height:1.3"><span style="font-size:13px;font-weight:600">{{maskName(currentUser.nickname||currentUser.name)}}</span><span style="font-size:11px;color:var(--c-text-3)">{{currentUser.roleName}}</span></div></div>
+        <div class="user-chip" style="flex-direction:row;align-items:center;gap:8px" @click="openNicknameModal" title="点击修改个人设置"><div class="avatar">{{(currentUser.nickname||currentUser.name||'?')[0]}}</div><div style="display:flex;flex-direction:column;line-height:1.3"><span style="font-size:13px;font-weight:600">{{currentUser.nickname||currentUser.name}}</span><span style="font-size:11px;color:var(--c-text-3)">{{currentUser.roleName}}</span></div></div>
         <div class="icon-btn" @click="logout" title="退出"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
       </div>
     </div>
@@ -260,7 +257,7 @@ tr:hover td{background:#F8FAFC}
       <div v-if="page==='dashboard'" key="dashboard">
         <div class="card" style="background:linear-gradient(135deg,var(--blue0),var(--blue2));color:#fff;margin-bottom:20px;border:none">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div><h2 style="font-size:20px;margin-bottom:6px">欢迎回来，{{maskName(currentUser.nickname||currentUser.name)}}</h2>
+            <div><h2 style="font-size:20px;margin-bottom:6px">欢迎回来，{{currentUser.nickname||currentUser.name}}</h2>
             <p style="opacity:.7;font-size:13px">您可访问范围内共 {{scopedRelics.length}} 件文物 · {{repairingCount}} 件修复中 · {{pendingCount}} 件待处理 <span v-if="canManageUsers">· {{allUsers.length}} 名人员</span></p>
             <div v-if="currentUser.roleName==='修复师'" style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
               <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:8px;font-size:13px"><b>{{myPendingTotal}}</b> 件待处理</div>
@@ -291,7 +288,7 @@ tr:hover td{background:#F8FAFC}
           <table><thead><tr><th>编号</th><th></th><th>类型</th><th>出土/来源地</th><th>上传人</th><th>上传时间</th><th>状态</th><th>操作</th></tr></thead><tbody>
             <tr v-for="r in scopedRelics.slice(0,6)" :key="r.id"><td class="t-code">{{r.id}}</td>
             <td><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" :style="'width:32px;height:32px;border-radius:6px;object-fit:cover;'+relicStyleThumb(r)"></td>
-            <td>{{r.type}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{maskName(r.uploadedBy)}}</td><td class="t-sub">{{r.uploadTime}}</td>
+            <td>{{r.type}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{r.uploadedBy}}</td><td class="t-sub">{{r.uploadTime}}</td>
             <td><span class="badge" :class="sb(r.status)">{{r.status}}</span></td><td><button class="btn btn-outline btn-xs" @click="viewRelic(r)">查看</button></td></tr>
           </tbody></table>
         </div>
@@ -345,7 +342,7 @@ tr:hover td{background:#F8FAFC}
               <tr v-for="r in pagedRelics" :key="r.id">
                 <td class="t-code">{{r.id}}</td>
                 <td><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" :style="'width:36px;height:36px;border-radius:6px;object-fit:cover;'+relicStyleThumb(r)"></td>
-                <td>{{r.type}}</td><td class="t-sub">{{r.library}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{maskName(r.uploadedBy)}}</td><td class="t-sub">{{r.uploadTime}}</td>
+                <td>{{r.type}}</td><td class="t-sub">{{r.library}}</td><td class="t-sub">{{r.site}}</td><td class="t-sub">{{r.uploadedBy}}</td><td class="t-sub">{{r.uploadTime}}</td>
                 <td><span class="badge" :class="sb(r.status)">{{r.status}}</span></td>
                 <td style="white-space:nowrap"><button class="btn btn-outline btn-xs" @click="viewRelic(r)">查看</button> <button v-if="canAssign||canEdit" class="btn btn-outline btn-xs" @click="openEditRestorer(r)">编辑</button> <button v-if="canDelete" class="btn btn-outline btn-xs" style="color:#dc2626;border-color:#fecaca" @click="delRelic(r)">删除</button></td>
               </tr>
@@ -378,9 +375,9 @@ tr:hover td{background:#F8FAFC}
                 <div><div class="mi-label">年代</div><div class="mi-val">{{sel.era}}</div></div>
                 <div><div class="mi-label">尺寸(cm)</div><div class="mi-val">{{sel.size}}</div></div>
                 <div><div class="mi-label">重量(g)</div><div class="mi-val">{{sel.weight}}</div></div>
-                <div><div class="mi-label">上传人</div><div class="mi-val">{{maskName(sel.uploadedBy)}}</div></div>
+                <div><div class="mi-label">上传人</div><div class="mi-val">{{sel.uploadedBy}}</div></div>
                 <div><div class="mi-label">上传时间</div><div class="mi-val">{{sel.uploadTime}}</div></div>
-                <div><div class="mi-label">修复师</div><div class="mi-val">{{maskName(sel.restorer)||'未分配'}}</div></div>
+                <div><div class="mi-label">修复师</div><div class="mi-val">{{sel.restorer||'未分配'}}</div></div>
               </div>
             </div>
           </div>
@@ -450,7 +447,7 @@ tr:hover td{background:#F8FAFC}
             <div v-if="!sel.restorer" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/></svg><p>该文物尚未分配修复师</p></div>
             <div v-else>
               <div style="display:flex;gap:24px;margin-bottom:16px">
-                <div><div class="mi-label">修复师</div><div class="mi-val">{{maskName(sel.restorer)}}</div></div>
+                <div><div class="mi-label">修复师</div><div class="mi-val">{{sel.restorer}}</div></div>
                 <div style="flex:1"><div class="mi-label">修复进度</div><div style="display:flex;align-items:center;gap:8px;margin-top:2px"><div class="pbar" style="flex:1"><div class="fill ok" :style="{width:Math.max(sel.progress,3)+'%'}"></div></div><span style="font-weight:700">{{sel.progress}}%</span></div></div>
                 <div><div class="mi-label">预计完成</div><div class="mi-val">{{sel.deadline}}</div></div>
               </div>
@@ -468,7 +465,7 @@ tr:hover td{background:#F8FAFC}
                 </div>
               </div>
               <table><thead><tr><th>日期</th><th>工作内容</th><th>使用材料</th><th>工时</th><th>修复师</th></tr></thead><tbody>
-                <tr v-for="log in repairLogs" :key="log.id"><td class="t-sub">{{log.date}}</td><td>{{log.content}}</td><td class="t-sub">{{log.materials}}</td><td>{{log.hours}}h</td><td class="t-sub">{{maskName(log.restorer)}}</td></tr>
+                <tr v-for="log in repairLogs" :key="log.id"><td class="t-sub">{{log.date}}</td><td>{{log.content}}</td><td class="t-sub">{{log.materials}}</td><td>{{log.hours}}h</td><td class="t-sub">{{log.restorer}}</td></tr>
               </tbody></table>
             </div>
           </div>
@@ -533,23 +530,14 @@ tr:hover td{background:#F8FAFC}
       <!-- ASSIGNMENT -->
       <div v-else-if="page==='assignment'" key="assignment">
         <div class="card">
-          <div class="card-h">
-            <span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg>修复任务分配</span>
-            <div style="display:flex;gap:8px;align-items:center">
-              <span style="font-size:12px;color:var(--c-text-2)">待分配: <b style="color:var(--c-warn)">{{pendingAssignRelics.length}}</b> 件</span>
-              <button class="btn btn-outline btn-xs" @click="refreshFromServer" title="手动刷新数据">🔄 刷新</button>
-            </div>
-          </div>
-          <div class="alert alert-info"><span>以下文物已完成上传审核，等待分配修复人员 · 数据每15秒自动同步</span></div>
-          <div class="filters">
-            <input v-model="assignSearch" placeholder="搜索文物编号、名称、类型、病害、出土地..." style="flex:1" @keyup.enter="">
-          </div>
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg>修复任务分配</span></div>
+          <div class="alert alert-info"><span>以下文物已完成上传审核，等待分配修复人员</span></div>
           <table><thead><tr><th>编号</th><th></th><th>类型</th><th>病害描述</th><th>上传时间</th><th>操作</th></tr></thead><tbody>
-            <tr v-for="r in filteredAssignRelics" :key="r.id"><td class="t-code">{{r.id}}</td>
+            <tr v-for="r in scopedRelics.filter(x=>x.status==='已上传').slice(0,20)" :key="r.id"><td class="t-code">{{r.id}}</td>
             <td><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" :style="'width:32px;height:32px;border-radius:6px;object-fit:cover;'+relicStyleThumb(r)"></td>
             <td>{{r.type}}</td><td class="t-sub">{{r.disease}}</td><td class="t-sub">{{r.uploadTime}}</td><td><button class="btn btn-primary btn-xs" @click="openAssign(r)">分配修复师</button></td></tr>
           </tbody></table>
-          <div v-if="filteredAssignRelics.length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>{{assignSearch?'没有匹配的待分配文物':'暂无待分配文物'}}</p></div>
+          <div v-if="scopedRelics.filter(x=>x.status==='已上传').length===0" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p>暂无待分配文物</p></div>
         </div>
       </div>
 
@@ -570,7 +558,7 @@ tr:hover td{background:#F8FAFC}
           <div class="pc-grid">
             <div v-for="r in filteredMonitor" :key="r.id" class="pc" :class="{warn:r.status==='待修复'||r.progress<40,no:r.progress<20}" @click.stop="viewRelic(r)">
               <div class="pc-top"><img loading="lazy" v-if="r.imgBefore" :src="latestImg(r)" @error="imgFallback" class="pc-img" :style="relicStyleThumb(r)"><div class="pc-info"><div class="pc-name">{{r.id}}</div><span class="badge" :class="sb(r.status)" style="margin-top:2px">{{r.status}}</span></div></div>
-              <div class="pc-restorer">修复师: {{maskName(r.restorer)||'未分配'}} | 预计: {{r.deadline||'未设定'}}</div>
+              <div class="pc-restorer">修复师: {{r.restorer||'未分配'}} | 预计: {{r.deadline||'未设定'}}</div>
               <div class="pc-prog" v-if="r.status==='修复中'"><div class="pbar" style="flex:1"><div class="fill" :class="r.progress<20?'no':r.progress<40?'warn':'ok'" :style="{width:Math.max(r.progress,3)+'%'}"></div></div><span class="pc-pct">{{r.progress}}%</span></div>
               <div class="pc-prog" v-else><div class="pbar" style="flex:1"><div class="fill" :class="'warn'" :style="{width:'3%'}"></div></div><span class="pc-pct" style="color:var(--c-warn)">待开始</span></div>
               <div style="margin-top:6px;font-size:12px;color:var(--c-text-3)">{{stageFullLabel(r)}} | 最后更新: {{r.lastUpdate||'—'}}</div>
@@ -614,7 +602,7 @@ tr:hover td{background:#F8FAFC}
         </div>
         <div class="card"><div class="card-h">修复效率统计（AI智能分配）</div>
           <table><thead><tr><th>修复师</th><th>负责文物</th><th>已完成</th><th>修复中</th><th>平均工时</th><th>延期数</th><th>完成率</th></tr></thead><tbody>
-            <tr v-for="r in restorerStats" :key="r.name"><td class="t-name">{{maskName(r.name)}}</td><td>{{r.total}}</td><td>{{r.done}}</td><td>{{r.repairing}}</td><td>{{r.avgHours}}h</td><td><span class="badge" :class="r.delayed>0?'b-no':'b-ok'">{{r.delayed}}</span></td><td><span class="badge" :class="r.rate>=80?'b-ok':'b-warn'">{{r.rate}}%</span></td></tr>
+            <tr v-for="r in restorerStats" :key="r.name"><td class="t-name">{{r.name}}</td><td>{{r.total}}</td><td>{{r.done}}</td><td>{{r.repairing}}</td><td>{{r.avgHours}}h</td><td><span class="badge" :class="r.delayed>0?'b-no':'b-ok'">{{r.delayed}}</span></td><td><span class="badge" :class="r.rate>=80?'b-ok':'b-warn'">{{r.rate}}%</span></td></tr>
           </tbody></table>
         </div>
       </div>
@@ -737,14 +725,14 @@ tr:hover td{background:#F8FAFC}
         <div class="card" v-if="pendingUsers.length>0">
           <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>待审核用户</span><span class="badge b-warn">{{pendingUsers.length}} 人待审核</span></div>
           <table><thead><tr><th>姓名</th><th>工号</th><th>手机号</th><th>部门</th><th>身份</th><th>注册时间</th><th>操作</th></tr></thead><tbody>
-            <tr v-for="u in pendingUsers" :key="u.id"><td class="t-name">{{maskName(u.name)}}</td><td class="t-code">{{u.workId}}</td><td class="t-sub">{{u.phone}}</td><td class="t-sub">{{u.department}}</td><td><span class="badge b-info">{{u.roleName}}</span></td><td class="t-sub">{{u.regTime}}</td><td><button class="btn btn-success btn-xs" style="margin-right:4px" @click="openAudit(u)">审核</button><button class="btn btn-danger btn-xs" @click="rejectUser(u)">驳回</button></td></tr>
+            <tr v-for="u in pendingUsers" :key="u.id"><td class="t-name">{{u.name}}</td><td class="t-code">{{u.workId}}</td><td class="t-sub">{{u.phone}}</td><td class="t-sub">{{u.department}}</td><td><span class="badge b-info">{{u.roleName}}</span></td><td class="t-sub">{{u.regTime}}</td><td><button class="btn btn-success btn-xs" style="margin-right:4px" @click="openAudit(u)">审核</button><button class="btn btn-danger btn-xs" @click="rejectUser(u)">驳回</button></td></tr>
           </tbody></table>
         </div>
         <div class="card">
           <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>用户列表（{{activeUsers.length}}人）</span><button class="btn btn-primary btn-sm" @click="showUserModal=true">+ 新增用户</button></div>
           <div class="filters"><input v-model="userSearch" placeholder="搜索姓名、工号、部门..." style="flex:1"></div>
           <table><thead><tr><th>工号</th><th>姓名</th><th>昵称</th><th>角色</th><th>部门</th><th>查看范围</th><th>状态</th><th>最后登录</th><th>操作</th></tr></thead><tbody>
-            <tr v-for="u in filteredUsers" :key="u.id"><td class="t-code">{{u.workId}}</td><td class="t-name">{{maskName(u.name)}}</td><td class="t-sub">{{maskName(u.nickname)}}</td><td><span class="badge b-info">{{u.roleName}}</span></td><td class="t-sub">{{u.department}}</td><td><span class="badge" :class="u.scope==='全部文物'?'b-ok':u.scope==='指定专题库'?'b-info':'b-s5'">{{u.scope}}</span></td><td><span class="badge" :class="u.status==='正常'?'b-ok':'b-no'">{{u.status}}</span></td><td class="t-sub">{{u.lastLogin}}</td><td><button class="btn btn-outline btn-xs" style="margin-right:4px" @click="openPermModal(u)">权限</button><button class="btn btn-ghost btn-xs" @click="toggleStatus(u)">{{u.status==='正常'?'禁用':'启用'}}</button></td></tr>
+            <tr v-for="u in filteredUsers" :key="u.id"><td class="t-code">{{u.workId}}</td><td class="t-name">{{u.name}}</td><td class="t-sub">{{u.nickname}}</td><td><span class="badge b-info">{{u.roleName}}</span></td><td class="t-sub">{{u.department}}</td><td><span class="badge" :class="u.scope==='全部文物'?'b-ok':u.scope==='指定专题库'?'b-info':'b-s5'">{{u.scope}}</span></td><td><span class="badge" :class="u.status==='正常'?'b-ok':'b-no'">{{u.status}}</span></td><td class="t-sub">{{u.lastLogin}}</td><td><button class="btn btn-outline btn-xs" style="margin-right:4px" @click="openPermModal(u)">权限</button><button class="btn btn-ghost btn-xs" @click="toggleStatus(u)">{{u.status==='正常'?'禁用':'启用'}}</button></td></tr>
           </tbody></table>
         </div>
         <div class="card"><div class="card-h">角色权限体系（RBAC）</div>
@@ -755,77 +743,12 @@ tr:hover td{background:#F8FAFC}
         </template>
       </div>
 
-      <!-- CLOUD SYNC -->
-      <div v-else-if="page==='cloud'" key="cloud">
-        <div v-if="!canManageUsers" class="card" style="text-align:center;padding:60px 20px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:16px"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
-          <p style="font-size:16px;font-weight:600;color:var(--c-text-2)">权限不足</p>
-          <p style="font-size:13px;color:var(--c-text-3);margin-top:4px">您当前身份（{{currentUser.roleName}}）无权访问云端同步设置</p>
-        </div>
-        <template v-else>
-        <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>云端同步设置</span></div>
-          <div class="alert alert-info"><span>i</span><span>数据存储在 GitHub 仓库中，支持多设备同步。配置后，管理员的操作会自动同步到云端，修复师可自动获取最新数据。无需本地服务器，任何设备随时可访问。</span></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-            <div class="fg"><label>GitHub 用户名</label><input v-model="ghConfig.owner" placeholder="如：JustXylia"></div>
-            <div class="fg"><label>仓库名称</label><input v-model="ghConfig.repo" placeholder="如：relic-restoration-db"></div>
-            <div class="fg"><label>分支</label><input v-model="ghConfig.branch" placeholder="如：main"></div>
-            <div class="fg"><label>数据目录</label><input v-model="ghConfig.dataDir" placeholder="如：data"></div>
-          </div>
-          <div class="fg"><label>GitHub Personal Access Token</label>
-            <input v-model="ghConfig.token" type="password" placeholder="ghp_xxxxxxxxxxxx（可选）">
-            <div style="font-size:12px;color:var(--c-text-3);margin-top:6px">
-              Token 需要 repo 权限。<a href="https://github.com/settings/tokens" target="_blank" style="color:var(--c-primary)">在这里创建 Token</a>
-            </div>
-          </div>
-          <div class="fg"><label>Netlify API 地址 <span style="color:var(--c-ok)">（推荐，无需Token）</span></label>
-            <input v-model="netlifyApiUrl" placeholder="https://xxx.netlify.app/.netlify/functions/api/">
-            <div style="font-size:12px;color:var(--c-text-3);margin-top:6px">
-              配置后自动使用 Netlify 云端同步，无需 GitHub Token。在 Netlify 上部署后填写此地址。
-            </div>
-          </div>
-          <div v-if="ghSyncMsg" style="margin:12px 0;padding:10px 14px;border-radius:8px;font-size:13px;background:var(--blue7);color:var(--blue1)">
-            {{ghSyncMsg}}
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn btn-primary" @click="saveCloudConfig" :disabled="ghSyncing">保存配置</button>
-            <button class="btn btn-outline" @click="testCloudPull" :disabled="ghSyncing">测试读取</button>
-            <button class="btn btn-outline" @click="testCloudPush" :disabled="ghSyncing">测试写入</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 0 0118 0z"/><path d="M12 6v6l4 2"/></svg>同步操作</span></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-            <div style="padding:16px;background:var(--c-bg);border-radius:10px">
-              <div style="font-weight:600;margin-bottom:6px">从云端拉取</div>
-              <div style="font-size:13px;color:var(--c-text-3);margin-bottom:12px">用云端最新数据覆盖本地数据</div>
-              <button class="btn btn-primary btn-sm" @click="manualPullAll" :disabled="ghSyncing">立即拉取</button>
-            </div>
-            <div style="padding:16px;background:var(--c-bg);border-radius:10px">
-              <div style="font-weight:600;margin-bottom:6px">推送到云端</div>
-              <div style="font-size:13px;color:var(--c-text-3);margin-bottom:12px">将本地所有数据上传到云端</div>
-              <button class="btn btn-success btn-sm" @click="manualPushAll" :disabled="ghSyncing">立即推送</button>
-            </div>
-          </div>
-          <div style="margin-top:14px;padding:12px 14px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E">
-            <b>使用说明：</b>
-            <ol style="margin:6px 0 0 18px;line-height:1.8">
-              <li>配置 GitHub 仓库信息和 Token 后，数据变更会自动同步到云端</li>
-              <li>所有访问网站的用户（包括修复师）都能自动读取最新数据（每30秒刷新）</li>
-              <li>首次配置后，请先点击"推送到云端"将现有数据上传</li>
-              <li>Token 仅保存在本地浏览器中，不会上传到任何服务器</li>
-            </ol>
-          </div>
-        </div>
-        </template>
-      </div>
-
       </transition>
     </div>
   </div>
 
 <div v-if="showNicknameModal" class="mask" @click.self="showNicknameModal=false"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>个人设置</h3><span class="x" @click="showNicknameModal=false">×</span></div><div class="modal-b">
-<div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;padding:14px;background:var(--blue7);border-radius:8px"><div class="avatar" style="width:48px;height:48px;font-size:20px">{{(currentUser.nickname||currentUser.name||'?')[0]}}</div><div><div style="font-size:16px;font-weight:700">{{maskName(currentUser.nickname||currentUser.name)}}</div><div style="font-size:12px;color:var(--c-text-3)">{{currentUser.roleName}} · 工号{{currentUser.workId}}</div></div></div>
+<div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;padding:14px;background:var(--blue7);border-radius:8px"><div class="avatar" style="width:48px;height:48px;font-size:20px">{{(currentUser.nickname||currentUser.name||'?')[0]}}</div><div><div style="font-size:16px;font-weight:700">{{currentUser.nickname||currentUser.name}}</div><div style="font-size:12px;color:var(--c-text-3)">{{currentUser.roleName}} · 工号{{currentUser.workId}}</div></div></div>
 <div class="fg"><label>修改昵称</label><input type="text" v-model="nickInput" placeholder="请输入新昵称"></div>
 <div class="fg"><label>当前身份</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px;font-size:13px">{{currentUser.roleName}}</div></div>
 <div class="fg"><label>申请身份变更</label><select v-model="roleApply"><option value="">不申请</option><option value="修复师">修复师</option><option value="保管员">保管员</option><option value="研究人员">研究人员</option><option value="修复委员会主任">修复委员会主任</option></select></div>
@@ -834,14 +757,14 @@ tr:hover td{background:#F8FAFC}
 </div><div class="modal-f"><button class="btn btn-outline" @click="showNicknameModal=false">取消</button><button class="btn btn-primary" @click="saveNickname">保存设置</button></div></div></div>
 <div v-if="showLibModal" class="mask" @click.self="showLibModal=false"><div class="modal"><div class="modal-h"><h3>新建专题库</h3><span class="x" @click="showLibModal=false">×</span></div><div class="modal-b"><div class="fg"><label>专题库名称</label><input v-model="newLib.name" placeholder="如：巴渝青铜器专题"></div><div class="fg"><label>编号前缀</label><input v-model="newLib.prefix" placeholder="如：BYQ"></div><div class="fg"><label>描述</label><textarea v-model="newLib.desc" rows="3"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showLibModal=false">取消</button><button class="btn btn-primary" @click="createLib">创建</button></div></div></div>
 <div v-if="showUploadModal" class="mask" @click.self="showUploadModal=false"><div class="modal"><div class="modal-h"><h3>上传文物</h3><span class="x" @click="showUploadModal=false">×</span></div><div class="modal-b"><div class="fg"><label>选择专题库</label><select v-model="upForm.library"><option v-for="lib in libs" :key="lib.id" :value="lib.name">{{lib.name}}</option></select></div><div class="fg"><label>文物代号</label><input v-model="upForm.name" placeholder="自动生成编号"></div><div class="frow"><div class="fg"><label>文物类型</label><select v-model="upForm.type"><option v-for="t in types" :key="t">{{t}}</option></select></div><div class="fg"><label>年代</label><input v-model="upForm.era"></div></div><div class="fg"><label>出土/来源地</label><input v-model="upForm.site"></div><div class="frow"><div class="fg"><label>尺寸(cm)</label><input v-model="upForm.size"></div><div class="fg"><label>重量(g)</label><input v-model="upForm.weight"></div></div><div class="fg"><label>病害描述</label><textarea v-model="upForm.disease" rows="2"></textarea></div><div class="fg"><label>文物图片</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onImgUpload" style="display:none">选择图片</label><span v-if="upForm.imgName" style="font-size:12px;color:var(--c-ok)">{{upForm.imgName}}</span></div></div><div class="fg"><label>GLB 3D模型（可选）</label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept=".glb,.gltf" @change="onGLBUpload" style="display:none">选择文件</label><span v-if="upForm.glbName" style="font-size:12px;color:var(--c-ok)">{{upForm.glbName}}</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUploadModal=false">取消</button><button class="btn btn-success" @click="doUpload">提交上传</button></div></div></div>
-<div v-if="showAssignModal" class="mask" @click.self="showAssignModal=false"><div class="modal"><div class="modal-h"><h3>分配修复任务</h3><span class="x" @click="showAssignModal=false">×</span></div><div class="modal-b" v-if="assignTarget"><div class="alert alert-info">文物编号: {{assignTarget.id}}</div><div class="fg"><label>选择修复师</label><select v-model="assignForm.restorer"><option value="">请选择</option><option v-for="r in restorers" :key="r" :value="r">{{maskName(r)}}</option></select></div><div class="frow"><div class="fg"><label>修复期限</label><input type="date" v-model="assignForm.deadline"></div><div class="fg"><label>优先级</label><select v-model="assignForm.priority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div></div><div class="fg"><label>特殊要求</label><textarea v-model="assignForm.req" rows="2"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showAssignModal=false">取消</button><button class="btn btn-primary" @click="confirmAssign">确认分配</button></div></div></div>
-<div v-if="showEditRestorerModal" class="mask" @click.self="showEditRestorerModal=false"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>编辑文物 — {{editRestorerTarget?.id}}</h3><span class="x" @click="showEditRestorerModal=false">×</span></div><div class="modal-b" v-if="editRestorerTarget"><div class="fg"><label>修复师</label><select v-model="editRestorerForm.restorer"><option value="">未分配</option><option v-for="r in restorers" :key="r" :value="r">{{maskName(r)}}</option></select></div><div class="fg"><label>文物状态</label><select v-model="editRestorerForm.status"><option value="待上传">待上传</option><option value="已上传">已上传</option><option value="待修复">待修复</option><option value="修复中">修复中</option><option value="已修复">已修复</option></select></div><div class="fg"><label>修复期限</label><input type="date" v-model="editRestorerForm.deadline"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showEditRestorerModal=false">取消</button><button class="btn btn-primary" @click="saveEditRestorer">保存</button></div></div></div>
+<div v-if="showAssignModal" class="mask" @click.self="showAssignModal=false"><div class="modal"><div class="modal-h"><h3>分配修复任务</h3><span class="x" @click="showAssignModal=false">×</span></div><div class="modal-b" v-if="assignTarget"><div class="alert alert-info">文物编号: {{assignTarget.id}}</div><div class="fg"><label>选择修复师</label><select v-model="assignForm.restorer"><option value="">请选择</option><option v-for="r in restorers" :key="r" :value="r">{{r}}</option></select></div><div class="frow"><div class="fg"><label>修复期限</label><input type="date" v-model="assignForm.deadline"></div><div class="fg"><label>优先级</label><select v-model="assignForm.priority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div></div><div class="fg"><label>特殊要求</label><textarea v-model="assignForm.req" rows="2"></textarea></div></div><div class="modal-f"><button class="btn btn-outline" @click="showAssignModal=false">取消</button><button class="btn btn-primary" @click="confirmAssign">确认分配</button></div></div></div>
+<div v-if="showEditRestorerModal" class="mask" @click.self="showEditRestorerModal=false"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>编辑文物 — {{editRestorerTarget?.id}}</h3><span class="x" @click="showEditRestorerModal=false">×</span></div><div class="modal-b" v-if="editRestorerTarget"><div class="fg"><label>修复师</label><select v-model="editRestorerForm.restorer"><option value="">未分配</option><option v-for="r in restorers" :key="r" :value="r">{{r}}</option></select></div><div class="fg"><label>文物状态</label><select v-model="editRestorerForm.status"><option value="待上传">待上传</option><option value="已上传">已上传</option><option value="待修复">待修复</option><option value="修复中">修复中</option><option value="已修复">已修复</option></select></div><div class="fg"><label>修复期限</label><input type="date" v-model="editRestorerForm.deadline"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showEditRestorerModal=false">取消</button><button class="btn btn-primary" @click="saveEditRestorer">保存</button></div></div></div>
 <div v-if="showUserModal" class="mask" @click.self="showUserModal=false"><div class="modal"><div class="modal-h"><h3>新增用户</h3><span class="x" @click="showUserModal=false">×</span></div><div class="modal-b"><div class="frow"><div class="fg"><label>姓名</label><input v-model="newUser.name"></div><div class="fg"><label>工号</label><input v-model="newUser.workId"></div></div><div class="frow"><div class="fg"><label>角色</label><select v-model="newUser.roleId"><option v-for="r in roles" :key="r.id" :value="r.id">{{r.name}}</option></select></div><div class="fg"><label>部门</label><input v-model="newUser.department"></div></div><div class="fg"><label>手机号</label><input v-model="newUser.phone"></div></div><div class="modal-f"><button class="btn btn-outline" @click="showUserModal=false">取消</button><button class="btn btn-primary" @click="createUser">创建</button></div></div></div>
-<div v-if="showAuditModal" class="mask" @click.self="showAuditModal=false"><div class="modal wide"><div class="modal-h"><h3>用户审核 — {{maskName(auditTarget?.name)}}</h3><span class="x" @click="showAuditModal=false">×</span></div><div class="modal-b" v-if="auditTarget"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px"><div class="fg"><label>姓名</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{maskName(auditTarget.name)}}</div></div><div class="fg"><label>工号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.workId}}</div></div><div class="fg"><label>手机号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.phone}}</div></div><div class="fg"><label>部门</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.department}}</div></div></div><div class="fg"><label>审核：设置查看范围</label><select v-model="auditForm.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>审核：功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:auditForm.perms[perm.key]}" @click="auditForm.perms[perm.key]=!auditForm.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-danger" @click="rejectFromAudit">驳回</button><button class="btn btn-success" @click="approveUser">审核通过</button></div></div></div>
-<div v-if="showPermModal" class="mask" @click.self="showPermModal=false"><div class="modal"><div class="modal-h"><h3>权限管理 — {{maskName(permTarget?.name)}}</h3><span class="x" @click="showPermModal=false">×</span></div><div class="modal-b" v-if="permTarget"><div class="fg"><label>查看范围</label><select v-model="permTarget.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:permTarget.perms[perm.key]}" @click="permTarget.perms[perm.key]=!permTarget.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showPermModal=false">取消</button><button class="btn btn-primary" @click="showPermModal=false">保存</button></div></div></div>
+<div v-if="showAuditModal" class="mask" @click.self="showAuditModal=false"><div class="modal wide"><div class="modal-h"><h3>用户审核 — {{auditTarget?.name}}</h3><span class="x" @click="showAuditModal=false">×</span></div><div class="modal-b" v-if="auditTarget"><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px"><div class="fg"><label>姓名</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.name}}</div></div><div class="fg"><label>工号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.workId}}</div></div><div class="fg"><label>手机号</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.phone}}</div></div><div class="fg"><label>部门</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px">{{auditTarget.department}}</div></div></div><div class="fg"><label>审核：设置查看范围</label><select v-model="auditForm.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>审核：功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:auditForm.perms[perm.key]}" @click="auditForm.perms[perm.key]=!auditForm.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-danger" @click="rejectFromAudit">驳回</button><button class="btn btn-success" @click="approveUser">审核通过</button></div></div></div>
+<div v-if="showPermModal" class="mask" @click.self="showPermModal=false"><div class="modal"><div class="modal-h"><h3>权限管理 — {{permTarget?.name}}</h3><span class="x" @click="showPermModal=false">×</span></div><div class="modal-b" v-if="permTarget"><div class="fg"><label>查看范围</label><select v-model="permTarget.scope"><option value="全部文物">全部文物</option><option value="指定专题库">指定专题库</option><option value="仅查看已修复">仅查看已修复</option></select></div><div class="fg"><label>功能权限</label><div class="perm-row" v-for="perm in permList" :key="perm.key"><span style="font-size:13px">{{perm.label}}</span><div class="toggle" :class="{on:permTarget.perms[perm.key]}" @click="permTarget.perms[perm.key]=!permTarget.perms[perm.key]"></div></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="showPermModal=false">取消</button><button class="btn btn-primary" @click="showPermModal=false">保存</button></div></div></div>
 <div v-if="showNoti" class="mask" @click="showNoti=false"><div style="position:absolute;top:60px;right:28px;width:320px;background:#fff;border-radius:10px;box-shadow:var(--sh-lg);z-index:1001;overflow:hidden"><div style="padding:14px 16px;border-bottom:1px solid var(--c-border);font-weight:700;font-size:14px">消息通知</div><div v-for="n in notifications" :key="n.id" style="padding:12px 16px;border-bottom:1px solid var(--c-border);font-size:13px"><div>{{n.text}}</div><div style="font-size:11px;color:var(--c-text-3);margin-top:2px">{{n.time}}</div></div></div></div>
 
-<div v-if="showStageImgModal" class="mask" @click.self="cancelStageImg"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>上传阶段图片（必填）</h3><span class="x" @click="cancelStageImg">×</span></div><div class="modal-b" v-if="stageImgTarget"><div class="alert alert-warn"><span>!</span><span>进入下一阶段必须上传 <b>{{stageImgLabel}}</b>，否则将保持当前阶段不变。文物编号: {{stageImgTarget.id}}</span></div><div class="fg"><label>{{stageImgLabel}} <span style="color:var(--c-danger)">*</span></label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onStageImgUpload" style="display:none">选择图片</label><span v-if="stageImgFileName" style="font-size:12px;color:var(--c-success)">✓ {{stageImgFileName}}</span><span v-else style="font-size:12px;color:var(--c-text-3)">支持 JPG/PNG，最大10MB</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="cancelStageImg">取消（保持原状态）</button><button class="btn btn-primary" @click="confirmStageImg">上传并进入下一阶段</button></div></div></div>
+<div v-if="showStageImgModal" class="mask" @click.self="cancelStageImg"><div class="modal" style="max-width:440px"><div class="modal-h"><h3>上传阶段图片（必填）</h3><span class="x" @click="cancelStageImg">×</span></div><div class="modal-b" v-if="stageImgTarget"><div class="alert alert-warn"><span>!</span><span>进入下一阶段必须上传 <b>{{stageImgLabel}}</b>，否则将保持当前阶段不变。文物编号: {{stageImgTarget.id}}</span></div><div class="fg"><label>{{stageImgLabel}} <span style="color:var(--c-danger)">*</span></label><div style="display:flex;gap:8px;align-items:center"><label class="file-btn"><input type="file" accept="image/*" @change="onStageImgUpload" style="display:none">选择图片</label><span style="font-size:12px;color:var(--c-text-3)">支持 JPG/PNG，最大10MB</span></div></div></div><div class="modal-f"><button class="btn btn-outline" @click="cancelStageImg">取消（保持原状态）</button><button class="btn btn-primary" @click="confirmStageImg">上传并进入下一阶段</button></div></div></div>
 
 
 </div>
@@ -850,9 +773,8 @@ tr:hover td{background:#F8FAFC}
 <script src="three.min.js" defer></script>
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
-<script src="GLTFExporter.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app2.js?v=20260911o" defer></script>
+<script src="app.js?v=20260914a" defer></script>
 </body>
 </html>
 
