@@ -554,7 +554,7 @@ createApp({setup(){
       currentUser.roleName=saved.roleName||'';
       currentUser.workId=saved.workId||'';
       currentUser.scope=saved.scope||'';
-      currentUser.perms=saved.perms||rolePerms['数字资产研究员'];
+      currentUser.perms=rolePerms[saved.roleName]||rolePerms['数字资产研究员'];
       loggedIn.value=true;
       nextTick(function(){setTimeout(function(){initCharts();},600);});
     }
