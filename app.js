@@ -43,6 +43,13 @@ function idbDelete(store,key){
   });
 }
 
+// Name masking: show first char + ** for privacy
+function maskName(name){
+  if(!name||typeof name!=='string'||name.length===0)return name;
+  if(name.length===1)return name+'**';
+  return name[0]+'**';
+}
+
 // localStorage for relic metadata persistence
 var USER_RELICS_KEY='userRelics_v1';
 var REG_USERS_KEY='regUsers_v1';
@@ -452,27 +459,27 @@ function genUsers(){
   var excelData=[
     {workId:'CQ-001',name:'龙强',nickname:'数据管家小强',role:'系统管理员',dept:'信息中心',phone:'13800010158',scope:'全部文物'},
     {workId:'CQ-002',name:'赖文博',nickname:'系统管家赖',role:'系统管理员',dept:'信息中心',phone:'13800010159',scope:'全部文物'},
-    {workId:'CQ-003',name:'董莹',nickname:'委员会老董',role:'修复委员会主任',dept:'修复委员会',phone:'13800010160',scope:'全部文物'},
-    {workId:'CQ-004',name:'朱杰慧',nickname:'委员朱',role:'修复委员会主任',dept:'修复委员会',phone:'13800010161',scope:'全部文物'},
-    {workId:'CQ-005',name:'秦浩然',nickname:'审定专家秦',role:'修复委员会主任',dept:'修复委员会',phone:'13800010162',scope:'全部文物'},
-    {workId:'CQ-006',name:'赵鹏',nickname:'青铜专家赵',role:'修复师',dept:'修复部-青铜组',phone:'13800010163',scope:'指定专题库'},
-    {workId:'CQ-007',name:'萧强静',nickname:'匠心传人萧',role:'修复师',dept:'修复部-青铜组',phone:'13800010164',scope:'指定专题库'},
-    {workId:'CQ-008',name:'崔丹',nickname:'青铜专家崔',role:'修复师',dept:'修复部-青铜组',phone:'13800010165',scope:'指定专题库'},
-    {workId:'CQ-009',name:'段芳慧',nickname:'青铜达人小慧',role:'修复师',dept:'修复部-青铜组',phone:'13800010166',scope:'指定专题库'},
-    {workId:'CQ-010',name:'董嘉怡',nickname:'青铜专家董',role:'修复师',dept:'修复部-青铜组',phone:'13800010167',scope:'指定专题库'},
-    {workId:'CQ-011',name:'傅佳',nickname:'匠心传人傅',role:'修复师',dept:'修复部-陶瓷组',phone:'13800010168',scope:'指定专题库'},
-    {workId:'CQ-012',name:'梁敏诗',nickname:'青铜专家梁',role:'修复师',dept:'修复部-陶瓷组',phone:'13800010169',scope:'指定专题库'},
-    {workId:'CQ-013',name:'韩磊宇',nickname:'匠心传人韩',role:'修复师',dept:'修复部-石质组',phone:'13800010170',scope:'指定专题库'},
-    {workId:'CQ-014',name:'雷欣',nickname:'石质专家雷',role:'修复师',dept:'修复部-石质组',phone:'13800010171',scope:'指定专题库'},
-    {workId:'CQ-015',name:'段若曦',nickname:'巧手段',role:'修复师',dept:'修复部-陶瓷组',phone:'13800010172',scope:'指定专题库'},
-    {workId:'CQ-016',name:'余颖梦',nickname:'保管达人余',role:'保管员',dept:'保管部-库房A',phone:'13800010173',scope:'指定库房'},
-    {workId:'CQ-017',name:'袁兰子',nickname:'文物守护者袁',role:'保管员',dept:'保管部-库房A',phone:'13800010174',scope:'指定库房'},
-    {workId:'CQ-018',name:'乔兰',nickname:'保管达人乔',role:'保管员',dept:'保管部-库房B',phone:'13800010175',scope:'指定库房'},
-    {workId:'CQ-019',name:'郝梓涵',nickname:'文物守护者郝',role:'保管员',dept:'保管部-库房B',phone:'13800010176',scope:'指定库房'},
-    {workId:'CQ-020',name:'吴波文',nickname:'考据专家吴',role:'研究人员',dept:'研究部',phone:'13800010177',scope:'仅查看已修复'},
-    {workId:'CQ-021',name:'钱志强',nickname:'研究达人钱',role:'研究人员',dept:'研究部',phone:'13800010178',scope:'仅查看已修复'},
-    {workId:'CQ-022',name:'孔冰',nickname:'研究达人孔',role:'研究人员',dept:'研究部',phone:'13800010179',scope:'仅查看已修复'},
-    {workId:'CQ-023',name:'毛辉婉',nickname:'考据专家毛',role:'研究人员',dept:'研究部',phone:'13800010180',scope:'仅查看已修复'}
+    {workId:'CQ-003',name:'董莹',nickname:'委员会老董',role:'数字资产审核主任',dept:'数字资产审核委员会',phone:'13800010160',scope:'全部文物'},
+    {workId:'CQ-004',name:'朱杰慧',nickname:'委员朱',role:'数字资产审核主任',dept:'数字资产审核委员会',phone:'13800010161',scope:'全部文物'},
+    {workId:'CQ-005',name:'秦浩然',nickname:'审定专家秦',role:'数字资产审核主任',dept:'数字资产审核委员会',phone:'13800010162',scope:'全部文物'},
+    {workId:'CQ-006',name:'赵鹏',nickname:'青铜专家赵',role:'数字化修复师',dept:'数字资产修复部-青铜组',phone:'13800010163',scope:'指定专题库'},
+    {workId:'CQ-007',name:'萧强静',nickname:'匠心传人萧',role:'数字化修复师',dept:'数字资产修复部-青铜组',phone:'13800010164',scope:'指定专题库'},
+    {workId:'CQ-008',name:'崔丹',nickname:'青铜专家崔',role:'数字化修复师',dept:'数字资产修复部-青铜组',phone:'13800010165',scope:'指定专题库'},
+    {workId:'CQ-009',name:'段芳慧',nickname:'青铜达人小慧',role:'数字化修复师',dept:'数字资产修复部-青铜组',phone:'13800010166',scope:'指定专题库'},
+    {workId:'CQ-010',name:'董嘉怡',nickname:'青铜专家董',role:'数字化修复师',dept:'数字资产修复部-青铜组',phone:'13800010167',scope:'指定专题库'},
+    {workId:'CQ-011',name:'傅佳',nickname:'匠心传人傅',role:'数字化修复师',dept:'数字资产修复部-陶瓷组',phone:'13800010168',scope:'指定专题库'},
+    {workId:'CQ-012',name:'梁敏诗',nickname:'青铜专家梁',role:'数字化修复师',dept:'数字资产修复部-陶瓷组',phone:'13800010169',scope:'指定专题库'},
+    {workId:'CQ-013',name:'韩磊宇',nickname:'匠心传人韩',role:'数字化修复师',dept:'数字资产修复部-石质组',phone:'13800010170',scope:'指定专题库'},
+    {workId:'CQ-014',name:'雷欣',nickname:'石质专家雷',role:'数字化修复师',dept:'数字资产修复部-石质组',phone:'13800010171',scope:'指定专题库'},
+    {workId:'CQ-015',name:'段若曦',nickname:'巧手段',role:'数字化修复师',dept:'数字资产修复部-陶瓷组',phone:'13800010172',scope:'指定专题库'},
+    {workId:'CQ-016',name:'余颖梦',nickname:'保管达人余',role:'数字资产保管员',dept:'数字资产保管部-库房A',phone:'13800010173',scope:'指定库房'},
+    {workId:'CQ-017',name:'袁兰子',nickname:'文物守护者袁',role:'数字资产保管员',dept:'数字资产保管部-库房A',phone:'13800010174',scope:'指定库房'},
+    {workId:'CQ-018',name:'乔兰',nickname:'保管达人乔',role:'数字资产保管员',dept:'数字资产保管部-库房B',phone:'13800010175',scope:'指定库房'},
+    {workId:'CQ-019',name:'郝梓涵',nickname:'文物守护者郝',role:'数字资产保管员',dept:'数字资产保管部-库房B',phone:'13800010176',scope:'指定库房'},
+    {workId:'CQ-020',name:'吴波文',nickname:'考据专家吴',role:'数字资产研究员',dept:'数字资产研究部',phone:'13800010177',scope:'仅查看已修复'},
+    {workId:'CQ-021',name:'钱志强',nickname:'研究达人钱',role:'数字资产研究员',dept:'数字资产研究部',phone:'13800010178',scope:'仅查看已修复'},
+    {workId:'CQ-022',name:'孔冰',nickname:'研究达人孔',role:'数字资产研究员',dept:'数字资产研究部',phone:'13800010179',scope:'仅查看已修复'},
+    {workId:'CQ-023',name:'毛辉婉',nickname:'考据专家毛',role:'数字资产研究员',dept:'数字资产研究部',phone:'13800010180',scope:'仅查看已修复'}
   ];
   var users=[];
   for(var i=0;i<excelData.length;i++){
@@ -489,7 +496,7 @@ createApp({setup(){
   var loggedIn=ref(false);var authMode=ref('login');
   var loginForm=reactive({username:'',password:''});var loginErr=ref('');
   var regForm=reactive({name:'',workId:'',phone:'',email:'',department:'',roleId:''});var regErr=ref('');
-  var regRoles=[{id:'restorer',name:'修复师'},{id:'curator',name:'保管员'},{id:'researcher',name:'研究人员'}];
+  var regRoles=[{id:'restorer',name:'数字化修复师'},{id:'curator',name:'数字资产保管员'},{id:'researcher',name:'数字资产研究员'}];
   onMounted(function(){
     resolveAllIdbImgs();
     // Sync data from server on load, then reload Vue reactive data
@@ -547,7 +554,7 @@ createApp({setup(){
       currentUser.roleName=saved.roleName||'';
       currentUser.workId=saved.workId||'';
       currentUser.scope=saved.scope||'';
-      currentUser.perms=saved.perms||rolePerms['研究人员'];
+      currentUser.perms=saved.perms||rolePerms['数字资产研究员'];
       loggedIn.value=true;
       nextTick(function(){setTimeout(function(){initCharts();},600);});
     }
@@ -572,16 +579,16 @@ createApp({setup(){
     }
     showNicknameModal.value=false;
   }
-  var roles=[{id:'admin',name:'系统管理员',permissions:'系统配置、用户管理、权限审核、全量数据',dataScope:'全量数据',userCount:2},{id:'director',name:'修复委员会主任',permissions:'修复审批、方案终审、验收确认',dataScope:'全量修复项目',userCount:3},{id:'restorer',name:'修复师',permissions:'修复方案编制、修复日志记录、影像上传',dataScope:'本人参与项目',userCount:10},{id:'curator',name:'保管员',permissions:'出入库操作、库房盘点、环境监测',dataScope:'所属库房',userCount:4},{id:'researcher',name:'研究人员',permissions:'文物查询、修复档案检索（只读）',dataScope:'已归档数据',userCount:4}];
+  var roles=[{id:'admin',name:'系统管理员',permissions:'系统配置、用户管理、权限审核、全量数据',dataScope:'全量数据',userCount:2},{id:'director',name:'数字资产审核主任',permissions:'数字资产审批、方案终审、验收确认',dataScope:'全量数字资产',userCount:3},{id:'restorer',name:'数字化修复师',permissions:'数字资产修复方案编制、修复日志记录、影像上传',dataScope:'本人参与项目',userCount:10},{id:'curator',name:'数字资产保管员',permissions:'数字资产出入库操作、盘点、环境监测',dataScope:'所属库房',userCount:4},{id:'researcher',name:'数字资产研究员',permissions:'数字资产查询、档案检索（只读）',dataScope:'已归档数据',userCount:4}];
   var currentUser=reactive({name:'',nickname:'',role:'',roleName:'',workId:'',scope:'',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
 
   // Role-based permission definitions
   var rolePerms={
     '系统管理员':{view:true,edit:true,delete:true,audit:true,assign:true,manageUsers:true,viewStats:true,viewAI:true,dataScope:'all'},
-    '修复委员会主任':{view:true,edit:true,delete:false,audit:true,assign:true,manageUsers:false,viewStats:true,viewAI:true,dataScope:'all'},
-    '修复师':{view:true,edit:true,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:true,dataScope:'assigned'},
-    '保管员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'assigned'},
-    '研究人员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'readonly'}
+    '数字资产审核主任':{view:true,edit:true,delete:false,audit:true,assign:true,manageUsers:false,viewStats:true,viewAI:true,dataScope:'all'},
+    '数字化修复师':{view:true,edit:true,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:true,dataScope:'assigned'},
+    '数字资产保管员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'assigned'},
+    '数字资产研究员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'readonly'}
   };
 
   var canManageUsers=computed(function(){return currentUser.perms&&currentUser.perms.manageUsers;});
@@ -620,7 +627,7 @@ createApp({setup(){
     var expectedPwd=excelPwds[u.workId];
     if(expectedPwd&&loginForm.password!==expectedPwd){loginErr.value='密码错误';return;}
     currentUser.name=u.name;currentUser.nickname=u.nickname||u.name;currentUser.role=u.roleId;currentUser.roleName=u.roleName;currentUser.workId=u.workId;currentUser.scope=u.scope||'';
-    currentUser.perms=rolePerms[u.roleName]||rolePerms['研究人员'];
+    currentUser.perms=rolePerms[u.roleName]||rolePerms['数字资产研究员'];
     u.lastLogin=new Date().toLocaleString('zh-CN');
     saveLoginUser(currentUser);
     loggedIn.value=true;
@@ -765,12 +772,12 @@ createApp({setup(){
     var items=[];
     var ds=currentUser.perms&&currentUser.perms.dataScope;
     var role=currentUser.roleName;
-    if(role==='系统管理员'||role==='修复委员会主任'){
+    if(role==='系统管理员'||role==='数字资产审核主任'){
       var up=relics.value.filter(function(r){return r.status==='已上传';});
       if(up.length>0)items.push({id:'p1',level:'warn',icon:'!',text:up.length+' 件文物等待分配修复师',btnType:'outline',btnText:'去分配',action:function(){nav('assignment');}});
       relics.value.filter(function(r){return r.status==='修复中'&&r.progress<30;}).slice(0,3).forEach(function(r){items.push({id:'p'+r.id,level:'no',icon:'!',text:r.id+' 修复进度偏低 ('+r.progress+'%)',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
       if(pendingUsers.value.length>0)items.push({id:'pu',level:'info',icon:'i',text:pendingUsers.value.length+' 个用户待审核',btnType:'outline',btnText:'去审核',action:function(){nav('accounts');}});
-    }else if(role==='修复师'){
+    }else if(role==='数字化修复师'){
       var myRepairing=relics.value.filter(function(r){return r.status==='修复中'&&r.restorer===currentUser.name;});
       var myPending2=relics.value.filter(function(r){return r.status==='待修复'&&r.restorer===currentUser.name;});
       if(myPending2.length>0||myRepairing.length>0){
@@ -778,10 +785,10 @@ createApp({setup(){
       }
       myRepairing.slice(0,5).forEach(function(r){items.push({id:'p'+r.id,level:'no',icon:'!',text:r.id+' 修复中 (进度 '+r.progress+'% · '+stageLabel(r.progress)+')',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
       myPending2.slice(0,5).forEach(function(r){items.push({id:'p'+r.id,level:'warn',icon:'!',text:r.id+' 待您开始修复',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
-    }else if(role==='保管员'){
+    }else if(role==='数字资产保管员'){
       var myUploads=relics.value.filter(function(r){return r.uploadedBy===currentUser.name&&r.status==='已上传';});
       if(myUploads.length>0)items.push({id:'p3',level:'warn',icon:'!',text:myUploads.length+' 件您上传的文物待分配修复师',btnType:'outline',btnText:'查看',action:function(){nav('relics');}});
-    }else if(role==='研究人员'){
+    }else if(role==='数字资产研究员'){
       var recently=relics.value.filter(function(r){return r.status==='已修复';}).slice(-3);
       recently.forEach(function(r){items.push({id:'p'+r.id,level:'info',icon:'i',text:r.id+' 已修复完成，可查看档案',btnType:'outline',btnText:'查看',action:function(){viewRelic(r);}});});
     }
@@ -792,19 +799,19 @@ createApp({setup(){
   var myPendingTotal=computed(function(){
     var role=currentUser.roleName;
     if(!role)return 0;
-    if(role==='修复师'){
+    if(role==='数字化修复师'){
       return relics.value.filter(function(r){
         return r.restorer===currentUser.name&&(r.status==='待修复'||r.status==='修复中');
       }).length;
-    }else if(role==='系统管理员'||role==='修复委员会主任'){
+    }else if(role==='系统管理员'||role==='数字资产审核主任'){
       return relics.value.filter(function(r){
         return r.status==='已上传'||r.status==='待修复'||r.status==='修复中';
       }).length;
-    }else if(role==='保管员'){
+    }else if(role==='数字资产保管员'){
       return relics.value.filter(function(r){
         return r.uploadedBy===currentUser.name&&(r.status==='已上传'||r.status==='待修复');
       }).length;
-    }else if(role==='研究人员'){
+    }else if(role==='数字资产研究员'){
       return relics.value.filter(function(r){return r.status==='已修复';}).length;
     }
     return 0;
@@ -859,7 +866,7 @@ createApp({setup(){
     saveRelicChange(r);
     showEditRestorerModal.value=false;
   }
-  function approveUser(){var u=auditTarget.value;u.scope=auditForm.scope;u.perms=JSON.parse(JSON.stringify(auditForm.perms));u.status='正常';u.roleId=u.roleId||'restorer';var role=roles.find(function(r){return r.id===u.roleId;});if(role)u.roleName=role.name;u.lastLogin='未登录';u.nickname=u.name;allUsers.value.push(u);saveAllUsers(allUsers.value);var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);showAuditModal.value=false;var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+u.name+'」审核通过');}
+  function approveUser(){var u=auditTarget.value;u.scope=auditForm.scope;u.perms=JSON.parse(JSON.stringify(auditForm.perms));u.status='正常';u.roleId=u.roleId||'restorer';var role=roles.find(function(r){return r.id===u.roleId;});if(role)u.roleName=role.name;u.lastLogin='未登录';u.nickname=u.name;allUsers.value.push(u);saveAllUsers(allUsers.value);var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);showAuditModal.value=false;var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+maskName(u.name)+'」审核通过');}
 
   var showLibModal=ref(false);var newLib=reactive({name:'',prefix:'',desc:''});
   function createLib(){if(!newLib.name||!newLib.prefix){alert('请填写名称和前缀');return;}
@@ -896,7 +903,7 @@ createApp({setup(){
   }
 
   var showAssignModal=ref(false);var assignTarget=ref(null);var assignForm=reactive({restorer:'',deadline:'',priority:'中',req:''});
-  var restorers=computed(function(){return allUsers.value.filter(function(u){return u.roleName==='修复师';}).slice(0,20).map(function(u){return u.name;});});
+  var restorers=computed(function(){return allUsers.value.filter(function(u){return u.roleName==='数字化修复师';}).map(function(u){return u.name;});});
   function openAssign(r){assignTarget.value=r;assignForm.restorer='';assignForm.deadline='';assignForm.priority='中';assignForm.req='';showAssignModal.value=true;}
   function confirmAssign(){
     if(!assignForm.restorer||!assignForm.deadline){alert('请选择修复师并设定期限');return;}
@@ -908,7 +915,7 @@ createApp({setup(){
     r.lastUpdate=new Date().toLocaleString('zh-CN');
     saveRelicChange(r);
     showAssignModal.value=false;
-    alert('\u5df2\u5c06\u7f16\u53f7 '+r.id+' \u5206\u914d\u7ed9\u4fee\u590d\u5e08 '+assignForm.restorer);
+    alert('已将编号 '+r.id+' 分配给修复师 '+maskName(assignForm.restorer));
   }
 
   var traceSearch=ref('');var traceResult=ref(null);
@@ -1058,7 +1065,7 @@ createApp({setup(){
   var permList=[{key:'view',label:'查看文物数据'},{key:'edit',label:'编辑文物信息'},{key:'delete',label:'删除文物'},{key:'audit',label:'审核上传数据'},{key:'assign',label:'分配修复任务'}];
   var auditForm=reactive({scope:'全部文物',perms:{view:true,edit:false,delete:false,audit:false,assign:false}});
   function openAudit(u){auditTarget.value=u;auditForm.scope='全部文物';auditForm.perms={view:true,edit:false,delete:false,audit:false,assign:false};showAuditModal.value=true;}
-  function rejectUser(u){var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+u.name+'」的注册申请已驳回');}
+  function rejectUser(u){var idx=pendingUsers.value.findIndex(function(x){return x.id===u.id;});if(idx>-1)pendingUsers.value.splice(idx,1);var regUsers=loadRegUsers();regUsers=regUsers.filter(function(x){return x.id!==u.id;});saveRegUsers(regUsers);alert('用户「'+maskName(u.name)+'」的注册申请已驳回');}
   function rejectFromAudit(){if(auditTarget.value){rejectUser(auditTarget.value);showAuditModal.value=false;}}
 
   var showPermModal=ref(false);var permTarget=ref(null);
@@ -1468,7 +1475,7 @@ createApp({setup(){
     _stageCallback=null;
   }
 
-  return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,
+  return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRegister,logout,currentUser,maskName,
     page,pageTitle,nav,types,libs,relics,allUsers,
     canManageUsers,canViewStats,canViewAI,canAssign,canEdit,canDelete,canAudit,scopedRelics,
     fStatus,fType,fLib,search,filteredRelics,pageSize,curPage,totalPages,visiblePages,pagedRelics,sc,sb,repairingCount,pendingCount,
