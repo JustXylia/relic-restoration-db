@@ -321,7 +321,7 @@ tr:hover td{background:#F8FAFC}
       <!-- RELICS -->
       <div v-else-if="page==='relics'" key="relics">
         <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{scopedRelics.length}}件）</span><button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">上传文物</button><button class="btn btn-outline btn-sm" @click="toggleExportMode" :style="exportMode ? 'background:var(--c-accent);color:#fff;border-color:var(--c-accent);' : ''">{{ exportMode ? "取消选择" : "批量导出" }}</button></div>
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{scopedRelics.length}}件）</span><div style="display:flex;gap:8px;align-items:center;"><button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">上传文物</button><button class="btn btn-outline btn-sm" @click="toggleExportMode" :style="exportMode ? 'background:var(--c-accent);color:#fff;border-color:var(--c-accent);' : ''">{{ exportMode ? "取消选择" : "批量导出" }}</button></div></div>
           <div class="tabs">
             <div class="tab" :class="{active:fStatus==='全部'}" @click="fStatus='全部'">全部 <span class="cnt">{{scopedRelics.length}}</span></div>
             <div class="tab" :class="{active:fStatus==='待上传'}" @click="fStatus='待上传'">待上传 <span class="cnt">{{sc('待上传')}}</span></div>
