@@ -584,11 +584,11 @@ createApp({setup(){
 
   // Role-based permission definitions
   var rolePerms={
-    '系统管理员':{view:true,edit:true,delete:true,audit:true,assign:true,manageUsers:true,viewStats:true,viewAI:true,dataScope:'all'},
-    '数字资产审核主任':{view:true,edit:true,delete:false,audit:true,assign:true,manageUsers:false,viewStats:true,viewAI:true,dataScope:'all'},
-    '修复师':{view:true,edit:true,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:true,dataScope:'assigned'},
-    '数字资产保管员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'assigned'},
-    '数字资产研究员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,dataScope:'readonly'}
+    '系统管理员':{view:true,edit:true,delete:true,audit:true,assign:true,manageUsers:true,viewStats:true,viewAI:true,viewMonitor:true,viewTrace:true,manageLibs:true,canExport:true,dataScope:'all'},
+    '数字资产审核主任':{view:true,edit:true,delete:false,audit:true,assign:true,manageUsers:false,viewStats:true,viewAI:true,viewMonitor:true,viewTrace:true,manageLibs:true,canExport:true,dataScope:'all'},
+    '修复师':{view:true,edit:true,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:true,viewMonitor:false,viewTrace:false,manageLibs:false,canExport:false,dataScope:'assigned'},
+    '数字资产保管员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,viewMonitor:false,viewTrace:false,manageLibs:false,canExport:false,dataScope:'assigned'},
+    '数字资产研究员':{view:true,edit:false,delete:false,audit:false,assign:false,manageUsers:false,viewStats:false,viewAI:false,viewMonitor:false,viewTrace:false,manageLibs:false,canExport:false,dataScope:'readonly'}
   };
 
   var canManageUsers=computed(function(){return currentUser.perms&&currentUser.perms.manageUsers;});
@@ -598,6 +598,10 @@ createApp({setup(){
   var canEdit=computed(function(){return currentUser.perms&&currentUser.perms.edit;});
   var canDelete=computed(function(){return currentUser.perms&&currentUser.perms.delete;});
   var canAudit=computed(function(){return currentUser.perms&&currentUser.perms.audit;});
+  var canViewMonitor=computed(function(){return currentUser.perms&&currentUser.perms.viewMonitor;});
+  var canViewTrace=computed(function(){return currentUser.perms&&currentUser.perms.viewTrace;});
+  var canManageLibs=computed(function(){return currentUser.perms&&currentUser.perms.manageLibs;});
+  var canExport=computed(function(){return currentUser.perms&&currentUser.perms.canExport;});
   // Filter relics based on user role data scope — single source of truth for visibility
   var scopedRelics=computed(function(){
     if(!currentUser.perms)return relics.value;
@@ -660,7 +664,26 @@ createApp({setup(){
 
   var page=ref('dashboard');
   var pageTitle=computed(function(){return{dashboard:'总览面板',thematic:'专题库管理',relics:'文物列表',detail:'文物详情',assignment:'修复任务分配',monitor:'修复进度监控',traceability:'责任链追溯',statistics:'统计分析',accounts:'用户与权限',aiRepair:'AI智能修复分析'}[page.value]||'';});
-  function nav(p){page.value=p;}
+  function nav(p){
+    // Permission check for each page
+    var permMap={
+      dashboard:'view',
+      thematic:'manageLibs',
+      relics:'view',
+      assignment:'assign',
+      monitor:'viewMonitor',
+      traceability:'viewTrace',
+      statistics:'viewStats',
+      accounts:'manageUsers',
+      aiRepair:'viewAI'
+    };
+    var requiredPerm=permMap[p];
+    if(requiredPerm&&!currentUser.perms[requiredPerm]){
+      alert('权限不足：您没有访问该功能的权限，请联系管理员分配。');
+      return;
+    }
+    page.value=p;
+  }
 
   var types=['青铜器','石质','金质','陶瓷'];
   var libStatuses=['采集中','采集中','修复中'];
@@ -1666,5 +1689,5 @@ return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRe
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly,
     resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
-    relicFilter,relicStyle,relicStyleThumb,stageFilter,exporting,exportProgress,showExportModal,exportType,openExportModal,closeExportModal,exportData,exportImages,exportModels,exportAll,doExport};
+    relicFilter,relicStyle,relicStyleThumb,stageFilter,exporting,exportProgress,showExportModal,exportType,openExportModal,closeExportModal,exportData,exportImages,exportModels,exportAll,doExport,canViewMonitor,canViewTrace,canManageLibs,canExport};
 }}).mount('#app');

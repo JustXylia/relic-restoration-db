@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>文物数字资产库系统</title>
-<script src="vue.min.js?v=20260915a" defer></script>
+<script src="vue.min.js?v=20260915b" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none}input,textarea{user-select:text;-webkit-user-select:text}
 :root{
@@ -230,16 +230,16 @@ tr:hover td{background:#F8FAFC}
     <div class="nav-section">概览</div>
     <div class="nav-item" :class="{active:page==='dashboard'}" @click="nav('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>总览面板</span></div>
     <div class="nav-section">文物管理</div>
-    <div class="nav-item" :class="{active:page==='thematic'}" @click="nav('thematic')" v-if="canAssign || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg><span>专题库管理</span></div>
+    <div class="nav-item" :class="{active:page==='thematic'}" @click="nav('thematic')" :style="!canManageLibs && !canManageUsers ? 'opacity:.4;' : ''"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg><span>专题库管理</span></div>
     <div class="nav-item" :class="{active:page==='relics'}" @click="nav('relics')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg><span>文物列表</span></div>
     <div class="nav-section">修复管控</div>
-    <div class="nav-item" :class="{active:page==='assignment'}" @click="nav('assignment')" v-if="canAssign"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg><span>修复分配</span></div>
-    <div class="nav-item" :class="{active:page==='monitor'}" @click="nav('monitor')" v-if="canEdit || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l4-4 4 4 4-6 4 6"/><path d="M3 3v18h18"/></svg><span>进度监控</span></div>
-    <div class="nav-item" :class="{active:page==='traceability'}" @click="nav('traceability')" v-if="canAudit || canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.72-1.71"/></svg><span>责任链追溯</span></div>
-    <div class="nav-item" :class="{active:page==='aiRepair'}" @click="nav('aiRepair')" v-if="canViewAI"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/></svg><span>AI修复分析</span></div>
+    <div class="nav-item" :class="{active:page==='assignment'}" @click="nav('assignment')" :style="!canAssign && !canManageUsers ? 'opacity:.4;' : ''"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6a2 2 0 012 2v2H7V4a2 2 0 012-2z"/><path d="M3 6h18v16a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/><path d="M9 14l2 2 4-4"/></svg><span>修复分配</span></div>
+    <div class="nav-item" :class="{active:page==='monitor'}" @click="nav('monitor')" :style="!canViewMonitor && !canManageUsers ? 'opacity:.4;' : ''"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l4-4 4 4 4-6 4 6"/><path d="M3 3v18h18"/></svg><span>进度监控</span></div>
+    <div class="nav-item" :class="{active:page==='traceability'}" @click="nav('traceability')" :style="!canViewTrace && !canManageUsers ? 'opacity:.4;' : ''"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.72-1.71"/></svg><span>责任链追溯</span></div>
+    <div class="nav-item" :class="{active:page==='aiRepair'}" @click="nav('aiRepair')" :style="!canViewAI ? 'opacity:.4;' : ''"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/></svg><span>AI修复分析</span></div>
     <div class="nav-section">系统</div>
-    <div class="nav-item" :class="{active:page==='statistics'}" @click="nav('statistics')" v-if="canViewStats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计分析</span></div>
-    <div class="nav-item" :class="{active:page==='accounts'}" @click="nav('accounts')" v-if="canManageUsers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span>用户与权限</span></div>
+    <div class="nav-item" :class="{active:page==='statistics'}" @click="nav('statistics')" :style="!canViewStats ? 'opacity:.4;' : ''"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>统计分析</span></div>
+    <div class="nav-item" :class="{active:page==='accounts'}" @click="nav('accounts')" :style="!canManageUsers ? 'opacity:.4;' : ''"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span>用户与权限</span></div>
   </div>
   <div class="main">
     <div class="topbar">
@@ -321,7 +321,7 @@ tr:hover td{background:#F8FAFC}
       <!-- RELICS -->
       <div v-else-if="page==='relics'" key="relics">
         <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{scopedRelics.length}}件）</span><button @click="openExportModal" class="btn-outline" style="margin-right:8px;">批量导出</button><button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">上传文物</button></div>
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{scopedRelics.length}}件）</span><button @click="canExport ? openExportModal() : alert('权限不足：您没有批量导出的权限，请联系管理员分配。')" class="btn-outline" style="margin-right:8px;" :style="!canExport ? 'opacity:.5;cursor:not-allowed;' : ''">批量导出</button><button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">上传文物</button></div>
           <div class="tabs">
             <div class="tab" :class="{active:fStatus==='全部'}" @click="fStatus='全部'">全部 <span class="cnt">{{scopedRelics.length}}</span></div>
             <div class="tab" :class="{active:fStatus==='待上传'}" @click="fStatus='待上传'">待上传 <span class="cnt">{{sc('待上传')}}</span></div>
@@ -774,7 +774,7 @@ tr:hover td{background:#F8FAFC}
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260915a" defer></script>
+<script src="app.js?v=20260915b" defer></script>
 </body>
 </html>
 
