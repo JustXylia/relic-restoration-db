@@ -1538,9 +1538,7 @@ createApp({setup(){
         return [d.id,d.name,d.type,d.era,d.location,d.size,d.weight,d.status,d.stage,d.restorer,d.uploader,d.uploadTime,d.description,d.lib,d.imageCount,d.hasModel?'是':'否']
           .map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"';}).join(',');
       });
-      content='﻿'+headers.join(',')+'
-'+rows.join('
-');
+      content=String.fromCharCode(65279)+headers.join(',')+'\n'+rows.join('\n');
       filename='文物数据_'+new Date().toISOString().slice(0,10)+'.csv';
       mimeType='text/csv;charset=utf-8';
     }else{
@@ -1555,12 +1553,10 @@ createApp({setup(){
     URL.revokeObjectURL(url);
     alert('数据导出成功！共 '+items.length+' 条记录');
   }
-
   async function exportImages(){
     var items=filteredRelics.value.filter(function(r){return r.images&&r.images.length>0;});
     if(items.length===0){alert('没有可导出的图片');return;}
-    if(!confirm('确定要导出 '+items.length+' 件文物的图片吗？
-文件较多时可能需要较长时间。'))return;
+    if(!confirm("确定要导出 "+items.length+" 件文物的图片吗？\n文件较多时可能需要较长时间。"))return;
     exporting.value=true;exportProgress.value=0;
     var total=items.reduce(function(sum,r){return sum+r.images.length;},0);
     var count=0;
@@ -1589,8 +1585,7 @@ createApp({setup(){
   async function exportModels(){
     var items=filteredRelics.value.filter(function(r){return r.hasGlb;});
     if(items.length===0){alert('没有可导出的三维模型');return;}
-    if(!confirm('确定要导出 '+items.length+' 件文物的三维模型吗？
-文件较大时可能需要较长时间。'))return;
+    if(!confirm("确定要导出 "+items.length+" 件文物的三维模型吗？\n文件较大时可能需要较长时间。"))return;
     exporting.value=true;exportProgress.value=0;
     for(var i=0;i<items.length;i++){
       var relic=items[i];
@@ -1611,9 +1606,7 @@ createApp({setup(){
   }
 
   async function exportAll(){
-    if(!confirm('确定要导出全部数据吗？
-包括：文物数据（JSON）、所有图片、所有三维模型
-这可能需要较长时间。'))return;
+    if(!confirm("确定要导出全部数据吗？\n包括：文物数据（JSON）、所有图片、所有三维模型\n这可能需要较长时间。"))return;
     exporting.value=true;exportProgress.value=0;
     exportData('json');
     await new Promise(function(r){setTimeout(r,1000);});
