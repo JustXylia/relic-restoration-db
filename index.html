@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>文物数字资产库系统</title>
-<script src="vue.min.js?v=20260915d" defer></script>
+<script src="vue.min.js?v=20260915e" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none}input,textarea{user-select:text;-webkit-user-select:text}
 :root{
@@ -321,7 +321,18 @@ tr:hover td{background:#F8FAFC}
       <!-- RELICS -->
       <div v-else-if="page==='relics'" key="relics">
         <div class="card">
-          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{scopedRelics.length}}件）</span><div style="display:flex;gap:8px;align-items:center;"><button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">上传文物</button><button class="btn btn-outline btn-sm" @click="toggleExportMode" :style="exportMode ? 'background:var(--c-accent);color:#fff;border-color:var(--c-accent);' : ''">{{ exportMode ? "取消选择" : "批量导出" }}</button></div></div>
+          <div class="card-h"><span class="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v3l-2 3v8a2 2 0 01-2 2H9a2 2 0 01-2-2V9L5 6V3z"/></svg>文物列表（共{{scopedRelics.length}}件）</span><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button v-if="canEdit || canManageUsers" class="btn btn-outline btn-sm" @click="showUploadModal=true">上传文物</button>
+              <button class="btn btn-outline btn-sm" @click="toggleExportMode" :style="exportMode ? 'background:var(--c-accent);color:#fff;border-color:var(--c-accent);' : ''">{{ exportMode ? "取消选择" : "批量导出" }}</button>
+            </div>
+            <div v-if="exportMode" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--c-accent-lt);border-radius:6px;font-size:13px;">
+              <span style="font-weight:600;color:var(--c-primary);font-size:13px;">已选 {{ selectedIds.length }} 件</span>
+              <button @click="selectAll" style="padding:2px 10px;font-size:12px;border:1px solid var(--c-border);background:#fff;border-radius:4px;cursor:pointer;">全选</button>
+              <button @click="selectNone" style="padding:2px 10px;font-size:12px;border:1px solid var(--c-border);background:#fff;border-radius:4px;cursor:pointer;">清空</button>
+              <button @click="openExportModal" style="padding:2px 12px;font-size:12px;background:var(--c-accent);color:#fff;border:none;border-radius:4px;cursor:pointer;" :disabled="selectedIds.length===0" :style="selectedIds.length===0 ? 'opacity:.5;cursor:not-allowed;' : ''">确认导出</button>
+            </div>
+          </div></div>
           <div class="tabs">
             <div class="tab" :class="{active:fStatus==='全部'}" @click="fStatus='全部'">全部 <span class="cnt">{{scopedRelics.length}}</span></div>
             <div class="tab" :class="{active:fStatus==='待上传'}" @click="fStatus='待上传'">待上传 <span class="cnt">{{sc('待上传')}}</span></div>
@@ -329,19 +340,7 @@ tr:hover td{background:#F8FAFC}
             <div class="tab" :class="{active:fStatus==='待修复'}" @click="fStatus='待修复'">待修复 <span class="cnt">{{sc('待修复')}}</span></div>
             <div class="tab" :class="{active:fStatus==='修复中'}" @click="fStatus='修复中'">修复中 <span class="cnt">{{sc('修复中')}}</span></div>
             
-      <div v-if="exportMode" style="margin-bottom:12px;padding:12px 16px;background:var(--c-accent-lt);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <span style="font-weight:600;color:var(--c-primary);">选择模式</span>
-          <span style="font-size:13px;color:var(--c-text-2);">已选择 {{ selectedIds.length }} / {{ filteredRelics.length }} 件</span>
-          <button @click="selectAll" class="btn-outline" style="padding:4px 12px;font-size:12px;">全选</button>
-          <button @click="selectNone" class="btn-outline" style="padding:4px 12px;font-size:12px;">清空</button>
-        </div>
-        <div style="display:flex;gap:8px;">
-          
-          <button @click="openExportModal" class="btn-primary" style="padding:6px 16px;" :disabled="selectedIds.length===0">
-            确认导出 ({{ selectedIds.length }})
-          </button>
-        </div>
+      
       </div><div class="tab" :class="{active:fStatus==='已修复'}" @click="fStatus='已修复'">已修复 <span class="cnt">{{sc('已修复')}}</span></div>
           </div>
           <div class="filters">
@@ -789,7 +788,7 @@ tr:hover td{background:#F8FAFC}
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260915d" defer></script>
+<script src="app.js?v=20260915e" defer></script>
 </body>
 </html>
 
