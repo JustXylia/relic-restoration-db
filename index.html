@@ -259,7 +259,7 @@ tr:hover td{background:#F8FAFC}
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div><h2 style="font-size:20px;margin-bottom:6px">欢迎回来，{{maskName(currentUser.nickname||currentUser.name)}}</h2>
             <p style="opacity:.7;font-size:13px">您可访问范围内共 {{scopedRelics.length}} 件文物 · {{repairingCount}} 件修复中 · {{pendingCount}} 件待处理 <span v-if="canManageUsers">· {{allUsers.length}} 名人员</span></p>
-            <div v-if="currentUser.roleName==='数字化修复师'" style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
+            <div v-if="currentUser.roleName==='修复师'" style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
               <div style="background:rgba(255,255,255,.15);padding:6px 14px;border-radius:8px;font-size:13px"><b>{{myPendingTotal}}</b> 件待处理</div>
               <div style="background:rgba(59,130,246,.3);padding:6px 14px;border-radius:8px;font-size:13px">待修复 <b>{{myPendingRepairCount}}</b></div>
               <div style="background:rgba(16,185,129,.3);padding:6px 14px;border-radius:8px;font-size:13px">修复中 <b>{{myRepairingCount}}</b></div>
@@ -751,7 +751,7 @@ tr:hover td{background:#F8FAFC}
 <div style="display:flex;gap:16px;align-items:center;margin-bottom:20px;padding:14px;background:var(--blue7);border-radius:8px"><div class="avatar" style="width:48px;height:48px;font-size:20px">{{(currentUser.nickname||currentUser.name||'?')[0]}}</div><div><div style="font-size:16px;font-weight:700">{{maskName(currentUser.nickname||currentUser.name)}}</div><div style="font-size:12px;color:var(--c-text-3)">{{currentUser.roleName}} · 工号{{currentUser.workId}}</div></div></div>
 <div class="fg"><label>修改昵称</label><input type="text" v-model="nickInput" placeholder="请输入新昵称"></div>
 <div class="fg"><label>当前身份</label><div style="padding:9px 12px;background:var(--c-bg);border-radius:8px;font-size:13px">{{currentUser.roleName}}</div></div>
-<div class="fg"><label>申请身份变更</label><select v-model="roleApply"><option value="">不申请</option><option value="数字化修复师">数字化修复师</option><option value="数字资产保管员">数字资产保管员</option><option value="数字资产研究员">数字资产研究员</option><option value="数字资产审核主任">数字资产审核主任</option></select></div>
+<div class="fg"><label>申请身份变更</label><select v-model="roleApply"><option value="">不申请</option><option value="修复师">修复师</option><option value="数字资产保管员">数字资产保管员</option><option value="数字资产研究员">数字资产研究员</option><option value="数字资产审核主任">数字资产审核主任</option></select></div>
 <div class="fg"><label>申请权限说明</label><textarea v-model="permApply" rows="2" placeholder="如需申请额外权限，请说明原因"></textarea></div>
 <div style="margin-top:8px;padding:10px 14px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E">身份变更和权限申请需经管理员审核通过后生效</div>
 </div><div class="modal-f"><button class="btn btn-outline" @click="showNicknameModal=false">取消</button><button class="btn btn-primary" @click="saveNickname">保存设置</button></div></div></div>
@@ -774,7 +774,7 @@ tr:hover td{background:#F8FAFC}
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260914b" defer></script>
+<script src="app.js?v=20260915a" defer></script>
 </body>
 </html>
 
