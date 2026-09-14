@@ -665,6 +665,11 @@ createApp({setup(){
   var page=ref('dashboard');
   var pageTitle=computed(function(){return{dashboard:'总览面板',thematic:'专题库管理',relics:'文物列表',detail:'文物详情',assignment:'修复任务分配',monitor:'修复进度监控',traceability:'责任链追溯',statistics:'统计分析',accounts:'用户与权限',aiRepair:'AI智能修复分析'}[page.value]||'';});
   function nav(p){
+    // 系统管理员拥有所有权限
+    if(currentUser.roleName==='系统管理员'){
+      page.value=p;
+      return;
+    }
     // Permission check for each page
     var permMap={
       dashboard:'view',
@@ -1498,64 +1503,104 @@ createApp({setup(){
     _stageCallback=null;
   }
 
-    // Batch export functionality
-  var exporting=ref(false);
-  var exportProgress=ref(0);
+      // Batch export functionality with selection mode
+  var exportMode=ref(false);
+  var selectedIds=ref([]);
   var showExportModal=ref(false);
   var exportType=ref('data');
+  var exporting=ref(false);
+  var exportProgress=ref(0);
+
+  function toggleExportMode(){
+    if(!canExport.value&&currentUser.roleName!=='系统管理员'){
+      alert('权限不足：您没有批量导出的权限，请联系管理员分配。');
+      return;
+    }
+    exportMode.value=!exportMode.value;
+    if(!exportMode.value){
+      selectedIds.value=[];
+    }
+  }
+
+  function toggleSelect(id){
+    var idx=selectedIds.value.indexOf(id);
+    if(idx>=0){
+      selectedIds.value.splice(idx,1);
+    }else{
+      selectedIds.value.push(id);
+    }
+  }
+
+  function selectAll(){
+    selectedIds.value=filteredRelics.value.map(function(r){return r.id;});
+  }
+
+  function selectNone(){
+    selectedIds.value=[];
+  }
 
   function openExportModal(){
+    if(selectedIds.value.length===0){
+      alert('请先选择要导出的文物');
+      return;
+    }
     exportType.value='data';
     exportProgress.value=0;
     exporting.value=false;
     showExportModal.value=true;
   }
+
   function closeExportModal(){
     if(exporting.value)return;
     showExportModal.value=false;
   }
 
+  function getSelectedRelics(){
+    return filteredRelics.value.filter(function(r){return selectedIds.value.indexOf(r.id)>=0;});
+  }
+
   function exportData(format){
-    var items=filteredRelics.value;
+    var items=getSelectedRelics();
     if(items.length===0){
       alert('没有可导出的数据');
       return;
     }
     var data=items.map(function(r){
       return {
-        id:r.id,name:r.name||'',type:r.type||'',era:r.era||'',
-        location:r.location||'',size:r.size||'',weight:r.weight||'',
-        status:r.status||'',stage:r.stage||'',restorer:r.restorer||'',
-        uploader:r.uploader||'',uploadTime:r.uploadTime||'',
-        description:r.description||'',lib:r.lib||'',
+        id:r.id,name:r.name||"",type:r.type||"",era:r.era||"",
+        location:r.location||"",size:r.size||"",weight:r.weight||"",
+        status:r.status||"",stage:r.stage||"",restorer:r.restorer||"",
+        uploader:r.uploader||"",uploadTime:r.uploadTime||"",
+        description:r.description||"",lib:r.lib||"",
         imageCount:(r.images?r.images.length:0),hasModel:!!r.hasGlb
       };
     });
     var content,filename,mimeType;
-    if(format==='csv'){
-      var headers=['编号','名称','类型','年代','出土地','尺寸','重量','状态','修复阶段','修复师','上传人','上传时间','描述','专题库','图片数','有模型'];
+    if(format==="csv"){
+      var headers=["编号","名称","类型","年代","出土地","尺寸","重量","状态","修复阶段","修复师","上传人","上传时间","描述","专题库","图片数","有模型"];
       var rows=data.map(function(d){
-        return [d.id,d.name,d.type,d.era,d.location,d.size,d.weight,d.status,d.stage,d.restorer,d.uploader,d.uploadTime,d.description,d.lib,d.imageCount,d.hasModel?'是':'否']
-          .map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"';}).join(',');
+        return [d.id,d.name,d.type,d.era,d.location,d.size,d.weight,d.status,d.stage,d.restorer,d.uploader,d.uploadTime,d.description,d.lib,d.imageCount,d.hasModel?"是":"否"]
+          .map(function(v){return '"'+String(v||"").replace(/"/g,'""')+'"';}).join(",");
       });
-      content=String.fromCharCode(65279)+headers.join(',')+'\n'+rows.join('\n');
-      filename='文物数据_'+new Date().toISOString().slice(0,10)+'.csv';
-      mimeType='text/csv;charset=utf-8';
+      content=String.fromCharCode(65279)+headers.join(",")+"\n"+rows.join("\n");
+      filename="文物数据_"+new Date().toISOString().slice(0,10)+".csv";
+      mimeType="text/csv;charset=utf-8";
     }else{
       content=JSON.stringify(data,null,2);
-      filename='文物数据_'+new Date().toISOString().slice(0,10)+'.json';
-      mimeType='application/json;charset=utf-8';
+      filename="文物数据_"+new Date().toISOString().slice(0,10)+".json";
+      mimeType="application/json;charset=utf-8";
     }
     var blob=new Blob([content],{type:mimeType});
     var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
+    var a=document.createElement("a");
     a.href=url;a.download=filename;a.click();
     URL.revokeObjectURL(url);
-    alert('数据导出成功！共 '+items.length+' 条记录');
+    alert("数据导出成功！共 "+items.length+" 条记录");
   }
+
   async function exportImages(){
-    var items=filteredRelics.value.filter(function(r){return r.images&&r.images.length>0;});
-    if(items.length===0){alert('没有可导出的图片');return;}
+    var items=getSelectedRelics().filter(function(r){return r.images&&r.images.length>0;});
+    if(items.length===0){alert("没有可导出的图片");return;}
     if(!confirm("确定要导出 "+items.length+" 件文物的图片吗？\n文件较多时可能需要较长时间。"))return;
     exporting.value=true;exportProgress.value=0;
     var total=items.reduce(function(sum,r){return sum+r.images.length;},0);
@@ -1565,52 +1610,52 @@ createApp({setup(){
       for(var j=0;j<relic.images.length;j++){
         var imgKey=relic.images[j];
         try{
-          var blob=await idbLoad('imgFiles',imgKey);
+          var blob=await idbLoad("imgFiles",imgKey);
           if(blob){
             var url=URL.createObjectURL(blob);
-            var a=document.createElement('a');
-            a.href=url;a.download=relic.id+'_图'+(j+1)+'.jpg';a.click();
+            var a=document.createElement("a");
+            a.href=url;a.download=relic.id+"_图"+(j+1)+".jpg";a.click();
             URL.revokeObjectURL(url);
             await new Promise(function(r){setTimeout(r,150);});
           }
-        }catch(e){console.warn('导出图片失败:',relic.id,e);}
+        }catch(e){console.warn("导出图片失败:",relic.id,e);}
         count++;
         exportProgress.value=Math.round(count/total*100);
       }
     }
     exporting.value=false;exportProgress.value=0;
-    alert('图片导出完成！共导出 '+count+' 张图片');
+    alert("图片导出完成！共导出 "+count+" 张图片");
   }
 
   async function exportModels(){
-    var items=filteredRelics.value.filter(function(r){return r.hasGlb;});
-    if(items.length===0){alert('没有可导出的三维模型');return;}
+    var items=getSelectedRelics().filter(function(r){return r.hasGlb;});
+    if(items.length===0){alert("没有可导出的三维模型");return;}
     if(!confirm("确定要导出 "+items.length+" 件文物的三维模型吗？\n文件较大时可能需要较长时间。"))return;
     exporting.value=true;exportProgress.value=0;
     for(var i=0;i<items.length;i++){
       var relic=items[i];
       try{
-        var blob=await idbLoad('glbFiles',relic.id);
+        var blob=await idbLoad("glbFiles",relic.id);
         if(blob){
           var url=URL.createObjectURL(blob);
-          var a=document.createElement('a');
-          a.href=url;a.download=relic.id+'_模型.glb';a.click();
+          var a=document.createElement("a");
+          a.href=url;a.download=relic.id+"_模型.glb";a.click();
           URL.revokeObjectURL(url);
           await new Promise(function(r){setTimeout(r,400);});
         }
-      }catch(e){console.warn('导出模型失败:',relic.id,e);}
+      }catch(e){console.warn("导出模型失败:",relic.id,e);}
       exportProgress.value=Math.round((i+1)/items.length*100);
     }
     exporting.value=false;exportProgress.value=0;
-    alert('三维模型导出完成！共导出 '+items.length+' 个模型');
+    alert("三维模型导出完成！共导出 "+items.length+" 个模型");
   }
 
   async function exportAll(){
-    if(!confirm("确定要导出全部数据吗？\n包括：文物数据（JSON）、所有图片、所有三维模型\n这可能需要较长时间。"))return;
+    if(!confirm("确定要导出全部选中的数据吗？\n包括：文物数据（JSON）、所有图片、所有三维模型\n这可能需要较长时间。"))return;
     exporting.value=true;exportProgress.value=0;
-    exportData('json');
+    exportData("json");
     await new Promise(function(r){setTimeout(r,1000);});
-    var imgItems=filteredRelics.value.filter(function(r){return r.images&&r.images.length>0;});
+    var imgItems=getSelectedRelics().filter(function(r){return r.images&&r.images.length>0;});
     if(imgItems.length>0){
       var imgTotal=imgItems.reduce(function(sum,r){return sum+r.images.length;},0);
       var imgCount=0;
@@ -1618,11 +1663,11 @@ createApp({setup(){
         var relic=imgItems[i];
         for(var j=0;j<relic.images.length;j++){
           try{
-            var blob=await idbLoad('imgFiles',relic.images[j]);
+            var blob=await idbLoad("imgFiles",relic.images[j]);
             if(blob){
               var url=URL.createObjectURL(blob);
-              var a=document.createElement('a');
-              a.href=url;a.download=relic.id+'_图'+(j+1)+'.jpg';a.click();
+              var a=document.createElement("a");
+              a.href=url;a.download=relic.id+"_图"+(j+1)+".jpg";a.click();
               URL.revokeObjectURL(url);
               await new Promise(function(r){setTimeout(r,150);});
             }
@@ -1632,15 +1677,15 @@ createApp({setup(){
         }
       }
     }
-    var modelItems=filteredRelics.value.filter(function(r){return r.hasGlb;});
+    var modelItems=getSelectedRelics().filter(function(r){return r.hasGlb;});
     if(modelItems.length>0){
       for(var k=0;k<modelItems.length;k++){
         try{
-          var mBlob=await idbLoad('glbFiles',modelItems[k].id);
+          var mBlob=await idbLoad("glbFiles",modelItems[k].id);
           if(mBlob){
             var mUrl=URL.createObjectURL(mBlob);
-            var mA=document.createElement('a');
-            mA.href=mUrl;mA.download=modelItems[k].id+'_模型.glb';mA.click();
+            var mA=document.createElement("a");
+            mA.href=mUrl;mA.download=modelItems[k].id+"_模型.glb";mA.click();
             URL.revokeObjectURL(mUrl);
             await new Promise(function(r){setTimeout(r,400);});
           }
@@ -1650,16 +1695,16 @@ createApp({setup(){
     }
     exportProgress.value=100;
     exporting.value=false;
-    alert('全部导出完成！');
+    alert("全部导出完成！");
   }
 
   function doExport(){
     switch(exportType.value){
-      case 'data':exportData('csv');break;
-      case 'datajson':exportData('json');break;
-      case 'images':exportImages();break;
-      case 'models':exportModels();break;
-      case 'all':exportAll();break;
+      case "data":exportData("csv");break;
+      case "datajson":exportData("json");break;
+      case "images":exportImages();break;
+      case "models":exportModels();break;
+      case "all":exportAll();break;
     }
   }
 
@@ -1682,5 +1727,5 @@ return{loggedIn,authMode,loginForm,loginErr,doLogin,regForm,regErr,regRoles,doRe
     chartStatus,chartTrend,chartWorkload,chartType,chartRepairStatus,chartLib,chartMonthly,
     resolvedImgs,latestImg,imgFallback,delRelic,openEditRestorer,saveEditRestorer,showEditRestorerModal,editRestorerTarget,editRestorerForm,showNicknameModal,nickInput,roleApply,permApply,openNicknameModal,saveNickname,
     showStageImgModal,stageImgTarget,stageImgField,stageImgLabel,onStageImgUpload,confirmStageImg,cancelStageImg,
-    relicFilter,relicStyle,relicStyleThumb,stageFilter,exporting,exportProgress,showExportModal,exportType,openExportModal,closeExportModal,exportData,exportImages,exportModels,exportAll,doExport,canViewMonitor,canViewTrace,canManageLibs,canExport};
+    relicFilter,relicStyle,relicStyleThumb,stageFilter,exportMode,selectedIds,exporting,exportProgress,showExportModal,exportType,toggleExportMode,toggleSelect,selectAll,selectNone,openExportModal,closeExportModal,exportData,exportImages,exportModels,exportAll,doExport,canViewMonitor,canViewTrace,canManageLibs,canExport};
 }}).mount('#app');
