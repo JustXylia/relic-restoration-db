@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>文物数字资产库系统</title>
-<script src="vue.min.js?v=20260915h" defer></script>
+<script src="vue.min.js?v=20260915i" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none}input,textarea{user-select:text;-webkit-user-select:text}
 :root{
@@ -327,10 +327,7 @@ tr:hover td{background:#F8FAFC}
             <div class="tab" :class="{active:fStatus==='待上传'}" @click="fStatus='待上传'">待上传 <span class="cnt">{{sc('待上传')}}</span></div>
             <div class="tab" :class="{active:fStatus==='已上传'}" @click="fStatus='已上传'">已上传 <span class="cnt">{{sc('已上传')}}</span></div>
             <div class="tab" :class="{active:fStatus==='待修复'}" @click="fStatus='待修复'">待修复 <span class="cnt">{{sc('待修复')}}</span></div>
-            <div class="tab" :class="{active:fStatus==='修复中'}" @click="fStatus='修复中'">修复中 <span class="cnt">{{sc('修复中')}}</span></div>
-            
-      
-      </div><div class="tab" :class="{active:fStatus==='已修复'}" @click="fStatus='已修复'">已修复 <span class="cnt">{{sc('已修复')}}</span></div>
+            <div class="tab" :class="{active:fStatus==='修复中'}" @click="fStatus='修复中'">修复中 <span class="cnt">{{sc('修复中')}}</span></div><div class="tab" :class="{active:fStatus==='已修复'}" @click="fStatus='已修复'">已修复 <span class="cnt">{{sc('已修复')}}</span></div>
           </div>
           <div class="filters">
             <select v-model="fType"><option value="">全部类型</option><option v-for="t in types" :key="t">{{t}}</option></select>
@@ -359,6 +356,7 @@ tr:hover td{background:#F8FAFC}
             <button :disabled="curPage===totalPages" @click="curPage++">下一页</button>
             <span style="font-size:12px;color:var(--c-text-3);margin-left:8px">共{{filteredRelics.length}}件 / {{totalPages}}页</span>
           </div>
+        </div>
         </div>
       </div>
 
@@ -776,7 +774,7 @@ tr:hover td{background:#F8FAFC}
 <script src="DRACOLoader.min.js" defer></script>
 <script src="GLTFLoader.min.js" defer></script>
 <script src="OrbitControls.min.js" defer></script>
-<script src="app.js?v=20260915h" defer></script>
+<script src="app.js?v=20260915i" defer></script>
 </body>
 </html>
 
